@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>四象限事務管理 | Eisenhower Matrix</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 頂部應用程式標題 -->
+  <header class="app-header">
+    <div class="logo-area">
+      <span class="logo-icon">🧭</span>
+      <h1>輕重緩急四象限事務管理</h1>
+    </div>
+    <div class="header-actions">
+      <button id="view-toggle-btn" class="btn btn-secondary mobile-only">切換側邊欄</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- 主要工作區 (上方輸入區 + 2x2 四象限 + 底部批次確認) -->
+    <main class="primary-workspace">
+
+      <!-- 1. 四象限上方使用者輸入與設定介面 -->
+      <section class="task-input-panel">
+        <form id="new-task-form" class="input-form-grid">
+          <div class="form-item input-desc">
+            <label for="input-task-title">1. 事物說明 *</label>
+            <input type="text" id="input-task-title" placeholder="輸入待辦內容..." required>
+          </div>
+
+          <div class="form-item input-date">
+            <label for="input-task-date">2. 完成日期 *</label>
+            <input type="date" id="input-task-date" required>
+          </div>
+
+          <div class="form-item input-importance">
+            <label for="input-task-importance">3. 重要程度 *</label>
+            <select id="input-task-importance">
+              <option value="important">⭐ 重要</option>
+              <option value="not_important">☕ 不重要</option>
+            </select>
+          </div>
+
+          <div class="form-item input-urgent-setting">
+            <label for="setting-urgent-days">
+              5. 緊急天數設定
+              <span class="tooltip-icon" title="當前日期至完成日期小於等於此天數即判定為緊急">ℹ️</span>
+            </label>
+            <div class="urgent-input-wrapper">
+              <span>未來</span>
+              <input type="number" id="setting-urgent-days" min="0" max="365" value="3">
+              <span>天內視為緊急</span>
+            </div>
+          </div>
+
+          <div class="form-item input-submit">
+            <label>&nbsp;</label>
+            <button type="submit" id="btn-add-task" class="btn btn-primary">4. 確認新增</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- 手機端象限切換標籤 (Samsung M33 RWD) -->
+      <nav class="quadrant-tabs mobile-only" id="quadrant-tabs">
+        <button class="q-tab active" data-q="urgent-important">左上: 重要且緊急</button>
+        <button class="q-tab" data-q="urgent-not-important">右上: 緊急不重要</button>
+        <button class="q-tab" data-q="not-urgent-important">左下: 重要不緊急</button>
+        <button class="q-tab" data-q="not-urgent-not-important">右下: 不急不重要</button>
+      </nav>
+
+      <!-- 2. 四象限網格 (位置與主題色精確配置) -->
+      <div class="matrix-grid">
+        
+        <!-- 左上角：重要且緊急 (#B70E00) -->
+        <section class="quadrant q-urgent-important" id="quadrant-urgent-important">
+          <div class="quadrant-header">
+            <div class="quadrant-title">
+              <span class="q-color-dot dot-urgent-important"></span>
+              <h2>重要且緊急</h2>
+            </div>
+            <span class="count-badge" id="count-urgent-important">0</span>
+          </div>
+          <div class="quadrant-meta-desc">立即處理 (截止日 ≦ 緊急天數)</div>
+          <div class="task-list" id="list-urgent-important"></div>
+        </section>
+
+        <!-- 右上角：緊急不重要 (#B89B00) -->
+        <section class="quadrant q-urgent-not-important" id="quadrant-urgent-not-important">
+          <div class="quadrant-header">
+            <div class="quadrant-title">
+              <span class="q-color-dot dot-urgent-not-important"></span>
+              <h2>緊急但不重要</h2>
+            </div>
+            <span class="count-badge" id="count-urgent-not-important">0</span>
+          </div>
+          <div class="quadrant-meta-desc">委派/批次應對 (截止日 ≦ 緊急天數)</div>
+          <div class="task-list" id="list-urgent-not-important"></div>
+        </section>
+
+        <!-- 左下角：重要不緊急 (#0C00B8) -->
+        <section class="quadrant q-not-urgent-important" id="quadrant-not-urgent-important">
+          <div class="quadrant-header">
+            <div class="quadrant-title">
+              <span class="q-color-dot dot-not-urgent-important"></span>
+              <h2>重要但不緊急</h2>
+            </div>
+            <span class="count-badge" id="count-not-urgent-important">0</span>
+          </div>
+          <div class="quadrant-meta-desc">排程規劃/專注成長 (長遠關鍵)</div>
+          <div class="task-list" id="list-not-urgent-important"></div>
+        </section>
+
+        <!-- 右下角：不急不重要 (#00B852) -->
+        <section class="quadrant q-not-urgent-not-important" id="quadrant-not-urgent-not-important">
+          <div class="quadrant-header">
+            <div class="quadrant-title">
+              <span class="q-color-dot dot-not-urgent-not-important"></span>
+              <h2>不緊急且不重要</h2>
+            </div>
+            <span class="count-badge" id="count-not-urgent-not-important">0</span>
+          </div>
+          <div class="quadrant-meta-desc">減少/刪除處理 (瑣碎不急)</div>
+          <div class="task-list" id="list-not-urgent-not-important"></div>
+        </section>
+
+      </div>
+
+      <!-- 四象限下方：批次確認完成更新按鈕 -->
+      <div class="matrix-action-bar">
+        <div class="selected-summary">已勾選 <span id="selected-tasks-count">0</span> 項任務</div>
+        <button id="btn-batch-complete" class="btn btn-action" disabled>✓ 確認更新（移至已完成）</button>
+      </div>
+
+    </main>
+
+    <!-- 附屬功能側邊欄 (月曆、購物清單、已完成清單) -->
+    <aside class="sidebar" id="app-sidebar">
+      <nav class="sidebar-tabs">
+        <button class="side-tab-btn active" data-tab="calendar">📅 月曆排程</button>
+        <button class="side-tab-btn" data-tab="shopping">🛒 購物清單</button>
+        <button class="side-tab-btn" data-tab="completed">✅ 已完成清單</button>
+      </nav>
+
+      <!-- 側邊欄 1: 月曆排程 -->
+      <section class="side-panel active" id="panel-calendar">
+        <div class="calendar-widget">
+          <div class="calendar-header">
+            <button id="prev-month" class="cal-nav-btn">&lt;</button>
+            <h3 id="current-month-year">2026年 11月</h3>
+            <button id="next-month" class="cal-nav-btn">&gt;</button>
+          </div>
+          <div class="calendar-weekdays">
+            <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+          </div>
+          <div class="calendar-days" id="calendar-days"></div>
+        </div>
+        <div class="day-events-section">
+          <h4>當日截止事項 (<span id="selected-date-str">--</span>)</h4>
+          <ul id="day-events-list" class="mini-list"></ul>
+        </div>
+      </section>
+
+      <!-- 側邊欄 2: 購物清單 -->
+      <section class="side-panel" id="panel-shopping">
+        <div class="panel-header">
+          <h3>採買備忘清單</h3>
+          <div class="panel-header-actions">
+            <span class="count-badge" id="shopping-count">0</span>
+            <button id="btn-clear-done-shopping" class="btn btn-sm btn-secondary" title="清除所有已打勾項目">清除已完成</button>
+          </div>
+        </div>
+        <form id="shopping-form" class="inline-input-form">
+          <input type="text" id="shopping-input" placeholder="輸入購買品項..." required>
+          <button type="submit" class="btn btn-sm btn-primary">新增</button>
+        </form>
+        <ul id="shopping-list" class="check-list"></ul>
+      </section>
+
+      <!-- 側邊欄 3: 已完成清單 (上方確認更新還原 + 一鍵清理) -->
+      <section class="side-panel" id="panel-completed">
+        <div class="completed-top-controls">
+          <button id="btn-batch-restore" class="btn btn-sm btn-success" disabled>↺ 確認更新（還原所選事項）</button>
+          <button id="btn-clear-completed" class="btn btn-sm btn-danger" title="清空所有已完成資料">🗑️ 一鍵清理</button>
+        </div>
+        <div class="selected-summary">已勾選 <span id="selected-completed-count">0</span> 項欲還原</div>
+        <ul id="completed-list" class="check-list completed-list"></ul>
+      </section>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration:', err));
+      });
+    }
+  </script>
+</body>
+</html>
