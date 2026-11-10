@@ -465,18 +465,21 @@ body {
   display: flex;
   border-bottom: 1px solid var(--border-color);
   background: #f8fafc;
+  overflow-x: auto;
 }
 
 .side-tab-btn {
   flex: 1;
+  min-width: 65px;
   padding: 10px 4px;
   border: none;
   background: none;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
 .side-tab-btn.active {
@@ -534,50 +537,73 @@ body {
 .calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+  gap: 4px;
 }
 
 .cal-day {
-  aspect-ratio: 1;
+  min-height: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding: 3px 2px;
   font-size: 0.75rem;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   position: relative;
   background: white;
-  border: 1px solid #f1f5f9;
+  border: 1px solid #e2e8f0;
+  transition: all 0.15s ease;
 }
 
 .cal-day:hover {
-  background: #e2e8f0;
+  background: #f1f5f9;
+  border-color: var(--primary);
 }
 
 .cal-day.today {
   font-weight: bold;
   border-color: var(--primary);
+}
+
+.cal-day.today .cal-day-num {
   color: var(--primary);
+  font-weight: 800;
 }
 
 .cal-day.selected {
-  background: var(--primary);
-  color: white;
+  background: #ede9fe;
+  border-color: var(--primary);
 }
 
-/* 月曆圓點容器 (可同時呈現多個象限的色點) */
-.cal-dots {
-  position: absolute;
-  bottom: 2px;
+.cal-day-num {
+  font-size: 0.72rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+/* 月曆方塊與數量標籤容器 */
+.cal-blocks-container {
   display: flex;
+  flex-wrap: wrap;
   gap: 2px;
+  justify-content: center;
+  width: 100%;
 }
 
-.cal-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
+.cal-block-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 3px;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .day-events-section {
@@ -674,6 +700,247 @@ body {
   gap: 8px;
   justify-content: space-between;
 }
+
+/* === 側邊欄：便利貼 (方案 B 簡約卡片清單) === */
+.note-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-input-form textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  resize: vertical;
+  background-color: #fff;
+  font-family: inherit;
+}
+
+.notes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.note-card {
+  background: #fefce8;
+  border: 1px solid #fef08a;
+  border-left: 4px solid #eab308;
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-content {
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #713f12;
+  line-height: 1.4;
+}
+
+.note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px dashed #fef08a;
+  padding-top: 6px;
+  font-size: 0.72rem;
+  color: #a16207;
+}
+
+.note-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-convert-task {
+  background: white;
+  border: 1px solid #ca8a04;
+  color: #854d0e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-convert-task:hover {
+  background: #fef08a;
+}
+
+/* === 側邊欄：快速收支記帳 === */
+.accounting-month-selector input {
+  padding: 3px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+}
+
+.acc-summary-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  background: #f8fafc;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.acc-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.acc-summary-item .label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.acc-summary-item .amount {
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.acc-summary-item.expense .amount { color: #dc2626; }
+.acc-summary-item.income .amount { color: #16a34a; }
+.acc-summary-item.balance .amount { color: var(--primary); }
+
+.acc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: white;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.acc-type-toggle {
+  display: flex;
+  gap: 12px;
+}
+
+.type-radio {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.type-radio input {
+  display: none;
+}
+
+.type-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  background: #f8fafc;
+  transition: all 0.15s;
+}
+
+.type-radio input:checked + .badge-expense {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.type-radio input:checked + .badge-income {
+  background: #dcfce7;
+  color: #16a34a;
+  border-color: #86efac;
+}
+
+.acc-form-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 6px;
+}
+
+.acc-form-row input,
+.acc-form-row select {
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  background: white;
+  outline: none;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.acc-records-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.acc-records-header h4 {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.acc-records-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.acc-record-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.acc-record-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.acc-record-title {
+  font-weight: 600;
+}
+
+.acc-record-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.acc-record-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.acc-record-amount {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.acc-record-amount.expense { color: #dc2626; }
+.acc-record-amount.income { color: #16a34a; }
 
 /* === RWD 響應式配置 === */
 .mobile-only {

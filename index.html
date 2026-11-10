@@ -144,12 +144,14 @@
 
     </main>
 
-    <!-- 附屬功能側邊欄 (月曆、購物清單、已完成清單) -->
+    <!-- 附屬功能側邊欄 (月曆、購物清單、已完成清單、便利貼、記帳) -->
     <aside class="sidebar" id="app-sidebar">
       <nav class="sidebar-tabs">
-        <button class="side-tab-btn active" data-tab="calendar">📅 月曆排程</button>
-        <button class="side-tab-btn" data-tab="shopping">🛒 購物清單</button>
-        <button class="side-tab-btn" data-tab="completed">✅ 已完成清單</button>
+        <button class="side-tab-btn active" data-tab="calendar">📅 月曆</button>
+        <button class="side-tab-btn" data-tab="shopping">🛒 購物</button>
+        <button class="side-tab-btn" data-tab="notes">📝 便利貼</button>
+        <button class="side-tab-btn" data-tab="accounting">💰 記帳</button>
+        <button class="side-tab-btn" data-tab="completed">✅ 已完成</button>
       </nav>
 
       <!-- 側邊欄 1: 月曆排程 -->
@@ -187,7 +189,81 @@
         <ul id="shopping-list" class="check-list"></ul>
       </section>
 
-      <!-- 側邊欄 3: 已完成清單 (上方確認更新還原 + 一鍵清理) -->
+      <!-- 側邊欄 3: 便利貼區 -->
+      <section class="side-panel" id="panel-notes">
+        <div class="panel-header">
+          <h3>隨手便利貼</h3>
+          <span class="count-badge" id="notes-count">0</span>
+        </div>
+        <form id="note-form" class="note-input-form">
+          <textarea id="note-input" rows="2" placeholder="記下隨機靈感、連結、電話... (Enter換行)" required></textarea>
+          <button type="submit" class="btn btn-sm btn-primary">+ 新增便貼</button>
+        </form>
+        <div id="notes-container" class="notes-grid"></div>
+      </section>
+
+      <!-- 側邊欄 4: 快速記帳區 -->
+      <section class="side-panel" id="panel-accounting">
+        <div class="panel-header">
+          <h3>快速收支記帳</h3>
+          <div class="accounting-month-selector">
+            <input type="month" id="acc-month-filter">
+          </div>
+        </div>
+
+        <!-- 本月收支摘要卡片 -->
+        <div class="acc-summary-card">
+          <div class="acc-summary-item expense">
+            <span class="label">本月支出</span>
+            <span class="amount" id="month-expense-total">$0</span>
+          </div>
+          <div class="acc-summary-item income">
+            <span class="label">本月收入</span>
+            <span class="amount" id="month-income-total">$0</span>
+          </div>
+          <div class="acc-summary-item balance">
+            <span class="label">本月結餘</span>
+            <span class="amount" id="month-balance-total">$0</span>
+          </div>
+        </div>
+
+        <!-- 記帳輸入表單 -->
+        <form id="acc-form" class="acc-form">
+          <div class="acc-type-toggle">
+            <label class="type-radio">
+              <input type="radio" name="acc-type" value="expense" checked>
+              <span class="type-badge badge-expense">支出 🔴</span>
+            </label>
+            <label class="type-radio">
+              <input type="radio" name="acc-type" value="income">
+              <span class="type-badge badge-income">收入 🟢</span>
+            </label>
+          </div>
+
+          <div class="acc-form-row">
+            <input type="number" id="acc-amount" placeholder="金額 * (必填)" min="1" step="any" required>
+            <input type="date" id="acc-date" required>
+          </div>
+
+          <div class="acc-form-row">
+            <select id="acc-category">
+              <!-- 動態載入支出/收入類別 -->
+            </select>
+            <input type="text" id="acc-title" placeholder="項目名稱 (非必選)">
+          </div>
+
+          <button type="submit" class="btn btn-sm btn-primary btn-block">+ 記錄此筆收支</button>
+        </form>
+
+        <!-- 收支明細列表 -->
+        <div class="acc-records-header">
+          <h4>當月明細紀錄</h4>
+          <span id="acc-records-count" class="count-badge">0 筆</span>
+        </div>
+        <ul id="acc-records-list" class="acc-records-list"></ul>
+      </section>
+
+      <!-- 側邊欄 5: 已完成清單 (上方確認更新還原 + 一鍵清理) -->
       <section class="side-panel" id="panel-completed">
         <div class="completed-top-controls">
           <button id="btn-batch-restore" class="btn btn-sm btn-success" disabled>↺ 確認更新（還原所選事項）</button>

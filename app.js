@@ -1,5 +1,5 @@
 /**
- * 輕重緩急四象限事務管理系統 (含 Firebase Firestore 跨裝置即時同步)
+ * 輕重緩急四象限事務管理系統 (含便利貼、快速記帳、Firebase 跨裝置同步)
  */
 
 // Firebase 設定物件 (使用者的專屬專案)
@@ -35,12 +35,40 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
+// 取得當前月份 YYYY-MM
+function getCurrentMonthString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
 // 輔助工具：日期計算
 function addDays(dateStr, days) {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
   return d.toISOString().split('T')[0];
 }
+
+// 記帳類別常數定義 (使用者指定之分類)
+const ACCOUNTING_CATEGORIES = {
+  expense: [
+    { group: '飲食', items: ['早餐', '午餐', '晚餐', '飲料', '零食'] },
+    { group: '交通', items: ['通勤', '加油', '停車', '計程車'] },
+    { group: '居住', items: ['房租', '水電費', '網路', '管理費'] },
+    { group: '日用品', items: ['日用品'] },
+    { group: '服飾美容', items: ['衣服', '鞋子', '理髮', '保養品'] },
+    { group: '娛樂社交', items: ['聚餐', '電影', '遊戲', '訂閱'] },
+    { group: '醫療保健', items: ['看診', '藥品', '保健食品'] },
+    { group: '教育學習', items: ['書籍', '課程', '考試費用'] }
+  ],
+  income: [
+    { group: '薪水', items: ['薪水'] },
+    { group: '獎金', items: ['年終獎金', '績效獎金', '三節獎金'] },
+    { group: '副業', items: ['兼職', '接案收入'] },
+    { group: '其他收入', items: ['利息', '退款', '中獎'] }
+  ]
+};
 
 // 狀態管理物件
 const state = {
@@ -59,6 +87,13 @@ const state = {
   completedTasks: JSON.parse(localStorage.getItem('matrix_completed_v2')) || [
     { id: 'c1', title: '繳納本月水電帳單', completedAt: getTodayDateString(), importance: 'important', originalDueDate: getTodayDateString() }
   ],
+  notes: JSON.parse(localStorage.getItem('matrix_notes_v2')) || [
+    { id: 'n1', content: '記得詢問會計發票作廢流程', createdAt: getTodayDateString() }
+  ],
+  accountingRecords: JSON.parse(localStorage.getItem('matrix_accounting_v2')) || [
+    { id: 'a1', type: 'expense', amount: 120, category: '午餐', title: '排骨便當', date: getTodayDateString() }
+  ],
+  accMonthFilter: getCurrentMonthString(),
   selectedTaskIds: new Set(),
   selectedRestoreIds: new Set(),
   calYear: new Date().getFullYear(),
@@ -90,6 +125,8 @@ function persistState() {
   localStorage.setItem('matrix_tasks_v2', JSON.stringify(state.tasks));
   localStorage.setItem('matrix_shopping_v2', JSON.stringify(state.shoppingList));
   localStorage.setItem('matrix_completed_v2', JSON.stringify(state.completedTasks));
+  localStorage.setItem('matrix_notes_v2', JSON.stringify(state.notes));
+  localStorage.setItem('matrix_accounting_v2', JSON.stringify(state.accountingRecords));
 
   // 如果已啟用雲端金鑰，同步至雲端
   if (db && state.syncKey && !isRemoteUpdating) {
@@ -98,6 +135,8 @@ function persistState() {
       tasks: state.tasks,
       shoppingList: state.shoppingList,
       completedTasks: state.completedTasks,
+      notes: state.notes,
+      accountingRecords: state.accountingRecords,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).catch(err => {
       console.error('雲端同步失敗:', err);
@@ -134,6 +173,9 @@ function bindCloudSync() {
         if (Array.isArray(data.tasks)) state.tasks = data.tasks;
         if (Array.isArray(data.shoppingList)) state.shoppingList = data.shoppingList;
         if (Array.isArray(data.completedTasks)) state.completedTasks = data.completedTasks;
+        if (Array.isArray(data.notes)) state.notes = data.notes;
+        if (Array.isArray(data.accountingRecords)) state.accountingRecords = data.accountingRecords;
+
         if (typeof data.urgentDaysThreshold === 'number') {
           state.urgentDaysThreshold = data.urgentDaysThreshold;
           urgentDaysInput.value = state.urgentDaysThreshold;
@@ -144,11 +186,12 @@ function bindCloudSync() {
         localStorage.setItem('matrix_tasks_v2', JSON.stringify(state.tasks));
         localStorage.setItem('matrix_shopping_v2', JSON.stringify(state.shoppingList));
         localStorage.setItem('matrix_completed_v2', JSON.stringify(state.completedTasks));
+        localStorage.setItem('matrix_notes_v2', JSON.stringify(state.notes));
+        localStorage.setItem('matrix_accounting_v2', JSON.stringify(state.accountingRecords));
 
         renderAll();
         isRemoteUpdating = false;
       } else {
-        // 初次使用此金鑰，主動將目前本機資料推上雲端建立文檔
         persistState();
       }
     }, err => {
@@ -185,11 +228,33 @@ const currentMonthYearEl = document.getElementById('current-month-year');
 const selectedDateStrEl = document.getElementById('selected-date-str');
 const dayEventsListEl = document.getElementById('day-events-list');
 
+// 便利貼元素
+const noteForm = document.getElementById('note-form');
+const noteInput = document.getElementById('note-input');
+const notesContainer = document.getElementById('notes-container');
+const notesCountEl = document.getElementById('notes-count');
+
+// 記帳元素
+const accMonthFilter = document.getElementById('acc-month-filter');
+const monthExpenseTotalEl = document.getElementById('month-expense-total');
+const monthIncomeTotalEl = document.getElementById('month-income-total');
+const monthBalanceTotalEl = document.getElementById('month-balance-total');
+const accForm = document.getElementById('acc-form');
+const accAmountInput = document.getElementById('acc-amount');
+const accDateInput = document.getElementById('acc-date');
+const accCategorySelect = document.getElementById('acc-category');
+const accTitleInput = document.getElementById('acc-title');
+const accRecordsListEl = document.getElementById('acc-records-list');
+const accRecordsCountEl = document.getElementById('acc-records-count');
+
 // === 初始化 ===
 document.addEventListener('DOMContentLoaded', () => {
   urgentDaysInput.value = state.urgentDaysThreshold;
   inputTaskDate.value = getTodayDateString();
+  accDateInput.value = getTodayDateString();
+  accMonthFilter.value = state.accMonthFilter;
 
+  updateAccountingCategoryOptions('expense');
   renderAll();
   bindEvents();
   initMobileView();
@@ -199,6 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderAll() {
   renderMatrix();
   renderShoppingList();
+  renderNotes();
+  renderAccounting();
   renderCompletedList();
   renderCalendar();
 }
@@ -426,7 +493,190 @@ btnClearDoneShopping.addEventListener('click', () => {
   renderShoppingList();
 });
 
-// === 4. 已完成清單 (勾選還原 + 上方確認更新 + 一鍵清理) ===
+// === 4. 便利貼模組 (方案 B + 一鍵轉四象限) ===
+noteForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const content = noteInput.value.trim();
+  if (!content) return;
+
+  state.notes.unshift({
+    id: 'n_' + Date.now(),
+    content,
+    createdAt: getTodayDateString()
+  });
+
+  noteInput.value = '';
+  persistState();
+  renderNotes();
+});
+
+function renderNotes() {
+  notesContainer.innerHTML = '';
+  notesCountEl.textContent = state.notes.length;
+
+  if (state.notes.length === 0) {
+    notesContainer.innerHTML = '<div style="color:#94a3b8; font-size:0.8rem; text-align:center; padding:12px;">尚無便利貼筆記</div>';
+    return;
+  }
+
+  state.notes.forEach(note => {
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    card.innerHTML = `
+      <div class="note-content">${escapeHtml(note.content)}</div>
+      <div class="note-footer">
+        <span>${note.createdAt}</span>
+        <div class="note-actions">
+          <button class="btn-convert-task" title="帶入上方事物說明轉換為四象限待辦">➡️ 轉待辦</button>
+          <button class="task-del-btn delete-note" title="刪除便貼">🗑️</button>
+        </div>
+      </div>
+    `;
+
+    // 核心互動：轉為四象限待辦
+    card.querySelector('.btn-convert-task').addEventListener('click', () => {
+      inputTaskTitle.value = note.content;
+      inputTaskTitle.focus();
+      // 平滑滾動到輸入區
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    card.querySelector('.delete-note').addEventListener('click', () => {
+      state.notes = state.notes.filter(n => n.id !== note.id);
+      persistState();
+      renderNotes();
+    });
+
+    notesContainer.appendChild(card);
+  });
+}
+
+// === 5. 快速記帳模組 ===
+// 動態產生類別選單
+function updateAccountingCategoryOptions(type) {
+  accCategorySelect.innerHTML = '<option value="">(未選擇類別)</option>';
+  const categories = ACCOUNTING_CATEGORIES[type] || [];
+
+  categories.forEach(groupObj => {
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = groupObj.group;
+    groupObj.items.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item;
+      opt.textContent = item;
+      optgroup.appendChild(opt);
+    });
+    accCategorySelect.appendChild(optgroup);
+  });
+}
+
+// 切換支出/收入單選鈕時動態更新類別下拉選單
+document.querySelectorAll('input[name="acc-type"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    updateAccountingCategoryOptions(e.target.value);
+  });
+});
+
+// 月份篩選變動
+accMonthFilter.addEventListener('change', (e) => {
+  state.accMonthFilter = e.target.value;
+  renderAccounting();
+});
+
+// 新增記帳紀錄
+accForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const type = document.querySelector('input[name="acc-type"]:checked').value;
+  const amount = parseFloat(accAmountInput.value);
+  const date = accDateInput.value;
+  const category = accCategorySelect.value;
+  const title = accTitleInput.value.trim();
+
+  if (isNaN(amount) || amount <= 0 || !date) return;
+
+  state.accountingRecords.unshift({
+    id: 'a_' + Date.now(),
+    type,
+    amount,
+    date,
+    category,
+    title
+  });
+
+  accAmountInput.value = '';
+  accTitleInput.value = '';
+  accCategorySelect.value = '';
+
+  // 若新增的月份跟目前過濾器不同，自動切換至該月份方便查看
+  const recordMonth = date.substring(0, 7);
+  if (state.accMonthFilter !== recordMonth) {
+    state.accMonthFilter = recordMonth;
+    accMonthFilter.value = recordMonth;
+  }
+
+  persistState();
+  renderAccounting();
+});
+
+function renderAccounting() {
+  accRecordsListEl.innerHTML = '';
+  const currentMonth = state.accMonthFilter;
+
+  // 過濾當月紀錄
+  const monthRecords = state.accountingRecords.filter(r => r.date && r.date.startsWith(currentMonth));
+
+  let totalExpense = 0;
+  let totalIncome = 0;
+
+  monthRecords.forEach(r => {
+    if (r.type === 'expense') {
+      totalExpense += r.amount;
+    } else {
+      totalIncome += r.amount;
+    }
+
+    const li = document.createElement('li');
+    li.className = 'acc-record-item';
+    const displayTitle = r.title || r.category || (r.type === 'expense' ? '一般支出' : '一般收入');
+    const displaySub = `${r.date} ${r.category ? `• ${r.category}` : ''}`;
+
+    li.innerHTML = `
+      <div class="acc-record-left">
+        <span class="acc-record-title">${escapeHtml(displayTitle)}</span>
+        <span class="acc-record-sub">${escapeHtml(displaySub)}</span>
+      </div>
+      <div class="acc-record-right">
+        <span class="acc-record-amount ${r.type}">
+          ${r.type === 'expense' ? '-' : '+'}$${r.amount.toLocaleString()}
+        </span>
+        <button class="task-del-btn delete-acc">×</button>
+      </div>
+    `;
+
+    li.querySelector('.delete-acc').addEventListener('click', () => {
+      state.accountingRecords = state.accountingRecords.filter(item => item.id !== r.id);
+      persistState();
+      renderAccounting();
+    });
+
+    accRecordsListEl.appendChild(li);
+  });
+
+  // 更新統計數字
+  monthExpenseTotalEl.textContent = `$${totalExpense.toLocaleString()}`;
+  monthIncomeTotalEl.textContent = `$${totalIncome.toLocaleString()}`;
+  const balance = totalIncome - totalExpense;
+  monthBalanceTotalEl.textContent = `${balance >= 0 ? '+' : ''}$${balance.toLocaleString()}`;
+  monthBalanceTotalEl.style.color = balance >= 0 ? 'var(--primary)' : '#dc2626';
+
+  accRecordsCountEl.textContent = `${monthRecords.length} 筆`;
+
+  if (monthRecords.length === 0) {
+    accRecordsListEl.innerHTML = '<li style="color:#94a3b8; font-size:0.8rem; text-align:center; padding:12px;">本月份無記帳紀錄</li>';
+  }
+}
+
+// === 6. 已完成清單 (勾選還原 + 上方確認更新 + 一鍵清理) ===
 function renderCompletedList() {
   completedListEl.innerHTML = '';
   if (state.completedTasks.length === 0) {
@@ -507,7 +757,7 @@ btnClearCompleted.addEventListener('click', () => {
   }
 });
 
-// === 5. 月曆排程模組 ===
+// === 7. 月曆排程模組 ===
 document.getElementById('prev-month').addEventListener('click', () => {
   state.calMonth--;
   if (state.calMonth < 0) {
@@ -549,30 +799,53 @@ function renderCalendar() {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const dayEl = document.createElement('div');
     dayEl.className = 'cal-day';
-    dayEl.textContent = d;
+
+    const numSpan = document.createElement('span');
+    numSpan.className = 'cal-day-num';
+    numSpan.textContent = d;
+    dayEl.appendChild(numSpan);
 
     if (dateStr === todayStr) dayEl.classList.add('today');
     if (dateStr === state.selectedDateStr) dayEl.classList.add('selected');
 
-    // 檢查此日期的四象限任務與色點
+    // 檢查此日期的四象限任務與統計各象限件數
     const dayTasks = state.tasks.filter(t => t.dueDate === dateStr);
     if (dayTasks.length > 0) {
-      const dotsContainer = document.createElement('div');
-      dotsContainer.className = 'cal-dots';
-      
-      const distinctQuadrants = new Set(dayTasks.map(t => {
-        const urgent = isUrgent(t.dueDate, state.urgentDaysThreshold);
-        return resolveQuadrant(t.importance, urgent);
-      }));
+      const blocksContainer = document.createElement('div');
+      blocksContainer.className = 'cal-blocks-container';
 
-      distinctQuadrants.forEach(qKey => {
-        const dot = document.createElement('span');
-        dot.className = 'cal-dot';
-        dot.style.backgroundColor = getQuadrantColor(qKey);
-        dotsContainer.appendChild(dot);
+      const qCounts = {
+        'urgent-important': 0,
+        'urgent-not-important': 0,
+        'not-urgent-important': 0,
+        'not-urgent-not-important': 0
+      };
+
+      dayTasks.forEach(t => {
+        const urgent = isUrgent(t.dueDate, state.urgentDaysThreshold);
+        const qKey = resolveQuadrant(t.importance, urgent);
+        qCounts[qKey]++;
       });
 
-      dayEl.appendChild(dotsContainer);
+      const qOrder = [
+        'urgent-important',       // 紅
+        'urgent-not-important',   // 黃
+        'not-urgent-important',   // 藍
+        'not-urgent-not-important'// 綠
+      ];
+
+      qOrder.forEach(qKey => {
+        if (qCounts[qKey] > 0) {
+          const badge = document.createElement('span');
+          badge.className = 'cal-block-badge';
+          badge.style.backgroundColor = getQuadrantColor(qKey);
+          badge.textContent = qCounts[qKey];
+          badge.title = `${qKey}: ${qCounts[qKey]} 件`;
+          blocksContainer.appendChild(badge);
+        }
+      });
+
+      dayEl.appendChild(blocksContainer);
     }
 
     dayEl.addEventListener('click', () => {
