@@ -65,7 +65,8 @@ body {
 .logo-area {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .logo-icon {
@@ -75,6 +76,7 @@ body {
 .logo-area h1 {
   font-size: 1.15rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .header-actions {
@@ -87,12 +89,17 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.82rem;
-  padding: 6px 12px;
-  background: #f8fafc;
+  font-size: 0.8rem;
+  padding: 5px 10px;
+  background: #f1f5f9;
   border: 1px solid var(--border-color);
   cursor: pointer;
   border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.sync-status-btn:hover {
+  background: #e2e8f0;
 }
 
 .sync-dot {
