@@ -1,6 +1,30 @@
 /**
- * 輕重緩急四象限事務管理系統
+ * 輕重緩急四象限事務管理系統 (含 Firebase Firestore 跨裝置即時同步)
  */
+
+// Firebase 設定物件 (使用者的專屬專案)
+const firebaseConfig = {
+  apiKey: "AIzaSyA3Q1GAx5AfHI72nWF-K6vMxUVfqnYFSrA",
+  authDomain: "my-matrix-sync.firebaseapp.com",
+  projectId: "my-matrix-sync",
+  storageBucket: "my-matrix-sync.firebasestorage.app",
+  messagingSenderId: "576540664279",
+  appId: "1:576540664279:web:1fb40b22d93e1734c4eb92"
+};
+
+// 初始化 Firebase
+let db = null;
+let unsubscribeFirestore = null;
+let isRemoteUpdating = false;
+
+try {
+  if (typeof firebase !== 'undefined') {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  }
+} catch (e) {
+  console.warn('Firebase init error:', e);
+}
 
 // 取得今天 YYYY-MM-DD
 function getTodayDateString() {
@@ -11,8 +35,16 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
+// 輔助工具：日期計算
+function addDays(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 // 狀態管理物件
 const state = {
+  syncKey: localStorage.getItem('matrix_sync_key') || '',
   urgentDaysThreshold: parseInt(localStorage.getItem('matrix_urgent_days') || '3', 10),
   tasks: JSON.parse(localStorage.getItem('matrix_tasks_v2')) || [
     { id: '1', title: '完成專案期末審查報告', dueDate: getTodayDateString(), importance: 'important' },
@@ -34,13 +66,6 @@ const state = {
   selectedDateStr: getTodayDateString()
 };
 
-// 輔助工具：日期計算
-function addDays(dateStr, days) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
-}
-
 // 判定是否為緊急：完成日期 <= 今天 + 緊急天數
 function isUrgent(dueDateStr, thresholdDays) {
   if (!dueDateStr) return false;
@@ -59,15 +84,82 @@ function resolveQuadrant(importance, isUrgentStatus) {
   return 'not-urgent-not-important';                                                  // 右下
 }
 
-// 儲存至 LocalStorage
+// 儲存資料（本地 localStorage + 雲端 Firestore）
 function persistState() {
   localStorage.setItem('matrix_urgent_days', state.urgentDaysThreshold.toString());
   localStorage.setItem('matrix_tasks_v2', JSON.stringify(state.tasks));
   localStorage.setItem('matrix_shopping_v2', JSON.stringify(state.shoppingList));
   localStorage.setItem('matrix_completed_v2', JSON.stringify(state.completedTasks));
+
+  // 如果已啟用雲端金鑰，同步至雲端
+  if (db && state.syncKey && !isRemoteUpdating) {
+    db.collection('matrix_sync').doc(state.syncKey).set({
+      urgentDaysThreshold: state.urgentDaysThreshold,
+      tasks: state.tasks,
+      shoppingList: state.shoppingList,
+      completedTasks: state.completedTasks,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err => {
+      console.error('雲端同步失敗:', err);
+    });
+  }
+}
+
+// 監聽並綁定雲端即時同步
+function bindCloudSync() {
+  if (unsubscribeFirestore) {
+    unsubscribeFirestore();
+    unsubscribeFirestore = null;
+  }
+
+  const syncStatusDot = document.getElementById('sync-status-dot');
+  const syncStatusText = document.getElementById('sync-status-text');
+
+  if (!db || !state.syncKey) {
+    syncStatusDot.classList.remove('connected');
+    syncStatusText.textContent = '未設金鑰 (單機)';
+    return;
+  }
+
+  syncStatusText.textContent = `同步中: ${state.syncKey}`;
+  syncStatusDot.classList.add('connected');
+
+  // 即時監聽 Firestore 文檔變化
+  unsubscribeFirestore = db.collection('matrix_sync').doc(state.syncKey)
+    .onSnapshot(doc => {
+      if (doc.exists) {
+        const data = doc.data();
+        isRemoteUpdating = true;
+
+        if (Array.isArray(data.tasks)) state.tasks = data.tasks;
+        if (Array.isArray(data.shoppingList)) state.shoppingList = data.shoppingList;
+        if (Array.isArray(data.completedTasks)) state.completedTasks = data.completedTasks;
+        if (typeof data.urgentDaysThreshold === 'number') {
+          state.urgentDaysThreshold = data.urgentDaysThreshold;
+          urgentDaysInput.value = state.urgentDaysThreshold;
+        }
+
+        // 保存到本機備份
+        localStorage.setItem('matrix_urgent_days', state.urgentDaysThreshold.toString());
+        localStorage.setItem('matrix_tasks_v2', JSON.stringify(state.tasks));
+        localStorage.setItem('matrix_shopping_v2', JSON.stringify(state.shoppingList));
+        localStorage.setItem('matrix_completed_v2', JSON.stringify(state.completedTasks));
+
+        renderAll();
+        isRemoteUpdating = false;
+      } else {
+        // 初次使用此金鑰，主動將目前本機資料推上雲端建立文檔
+        persistState();
+      }
+    }, err => {
+      console.error('監聽雲端出錯:', err);
+      syncStatusDot.classList.remove('connected');
+      syncStatusText.textContent = '連線異常';
+    });
 }
 
 // === DOM 元素綁定 ===
+const btnSyncKey = document.getElementById('btn-sync-key');
 const urgentDaysInput = document.getElementById('setting-urgent-days');
 const newTaskForm = document.getElementById('new-task-form');
 const inputTaskTitle = document.getElementById('input-task-title');
@@ -101,6 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAll();
   bindEvents();
   initMobileView();
+  bindCloudSync();
 });
 
 function renderAll() {
@@ -109,6 +202,24 @@ function renderAll() {
   renderCompletedList();
   renderCalendar();
 }
+
+// 雲端金鑰彈窗設定
+btnSyncKey.addEventListener('click', () => {
+  const currentKey = state.syncKey || '';
+  const inputKey = prompt('請輸入您的專屬同步金鑰（所有裝置輸入相同金鑰即可跨裝置自動同步）：', currentKey);
+  
+  if (inputKey !== null) {
+    const trimmed = inputKey.trim();
+    state.syncKey = trimmed;
+    localStorage.setItem('matrix_sync_key', trimmed);
+    bindCloudSync();
+    if (trimmed) {
+      alert(`已綁定金鑰：「${trimmed}」！您的資料將與所有使用此金鑰的裝置即時連線。`);
+    } else {
+      alert('已切換為單機離線模式。');
+    }
+  }
+});
 
 // === 1. 渲染四象限 ===
 function renderMatrix() {
