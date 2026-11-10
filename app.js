@@ -622,8 +622,16 @@ function renderAccounting() {
   accRecordsListEl.innerHTML = '';
   const currentMonth = state.accMonthFilter;
 
-  // 過濾當月紀錄
-  const monthRecords = state.accountingRecords.filter(r => r.date && r.date.startsWith(currentMonth));
+  // 過濾當月紀錄，並自動依「支出/收入日期」由新到舊排序 (降冪排序：最新的排最上面)
+  const monthRecords = state.accountingRecords
+    .filter(r => r.date && r.date.startsWith(currentMonth))
+    .sort((a, b) => {
+      // 1. 先比對日期 (最新日期在前)
+      const dateComparison = b.date.localeCompare(a.date);
+      if (dateComparison !== 0) return dateComparison;
+      // 2. 若同一天，則比較建立時間戳 ID (最新建立在前)
+      return b.id.localeCompare(a.id);
+    });
 
   let totalExpense = 0;
   let totalIncome = 0;
