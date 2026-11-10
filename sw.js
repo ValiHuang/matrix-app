@@ -1,4 +1,4 @@
-const CACHE_NAME = 'matrix-app-v2';
+const CACHE_NAME = 'matrix-app-v3';
 const ASSETS = [
   './',
   './index.html',

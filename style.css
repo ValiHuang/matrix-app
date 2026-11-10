@@ -495,6 +495,7 @@ body {
   gap: 10px;
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .side-panel.active {
@@ -723,8 +724,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 480px;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
 }
 
 .note-card {
@@ -898,8 +901,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 260px;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
 }
 
 .acc-record-item {
