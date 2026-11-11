@@ -1,4 +1,4 @@
-const CACHE_NAME = 'matrix-app-v9-merge';
+const CACHE_NAME = 'matrix-app-v10-auto-delete';
 const ASSETS = [
   './',
   './index.html',

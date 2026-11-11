@@ -398,13 +398,18 @@ function renderMatrix() {
     });
 
     // 刪除按鈕
-    card.querySelector('.task-del-btn').addEventListener('click', () => {
+    card.querySelector('.task-del-btn').addEventListener('click', async () => {
       if (confirm(`確定要刪除「${task.title}」嗎？`)) {
         state.tasks = state.tasks.filter(t => t.id !== task.id);
         state.selectedTaskIds.delete(task.id);
         persistState();
         renderMatrix();
         renderCalendar();
+
+        if (state.gcalToken) {
+          await deleteTaskFromGoogleCalendar(task);
+          fetchGoogleCalendarEvents();
+        }
       }
     });
 
@@ -426,18 +431,21 @@ function updateBatchCompleteButton() {
 }
 
 // 批次確認完成
-btnBatchComplete.addEventListener('click', () => {
+btnBatchComplete.addEventListener('click', async () => {
   if (state.selectedTaskIds.size === 0) return;
 
+  const completedList = [];
   const remainingTasks = [];
   state.tasks.forEach(task => {
     if (state.selectedTaskIds.has(task.id)) {
+      completedList.push(task);
       state.completedTasks.unshift({
         id: task.id,
         title: task.title,
         importance: task.importance,
         originalDueDate: task.dueDate,
-        completedAt: getTodayDateString()
+        completedAt: getTodayDateString(),
+        gcalEventId: task.gcalEventId || null
       });
     } else {
       remainingTasks.push(task);
@@ -451,6 +459,14 @@ btnBatchComplete.addEventListener('click', () => {
   renderMatrix();
   renderCompletedList();
   renderCalendar();
+
+  // 若有連線 Google 日曆，自動從 Google 日曆刪除已完成的事項
+  if (state.gcalToken && completedList.length > 0) {
+    for (const task of completedList) {
+      await deleteTaskFromGoogleCalendar(task);
+    }
+    fetchGoogleCalendarEvents();
+  }
 });
 
 // === 2. 上方使用者輸入與緊急天數偵測 ===
@@ -1326,6 +1342,10 @@ async function syncTaskToGoogleCalendar(task, showNotice = true) {
     }
 
     const createdEvent = await res.json();
+    if (createdEvent && createdEvent.id) {
+      task.gcalEventId = createdEvent.id;
+      persistState();
+    }
     if (showNotice) {
       alert(`成功同步至 Google 日曆：「${task.title}」！`);
     }
@@ -1337,5 +1357,41 @@ async function syncTaskToGoogleCalendar(task, showNotice = true) {
       alert(`同步至 Google 日曆失敗：${err.message}`);
     }
     if (btn) btn.textContent = '+Google';
+  }
+}
+
+// 從 Google 日曆刪除指定事項 (依 gcalEventId 或依標題與日期比對)
+async function deleteTaskFromGoogleCalendar(task) {
+  if (!state.gcalToken) return;
+
+  let eventIdToDelete = task.gcalEventId;
+
+  // 若事項未直接儲存 gcalEventId，則從當前快取的 gcalEvents 尋找相符標題與日期的事件
+  if (!eventIdToDelete && state.gcalEvents && state.gcalEvents.length > 0) {
+    const matched = state.gcalEvents.find(evt => {
+      const summary = (evt.summary || '').trim();
+      const evtDate = evt.start?.date || (evt.start?.dateTime ? evt.start.dateTime.split('T')[0] : '');
+      return summary === task.title.trim() && evtDate === task.dueDate;
+    });
+    if (matched) {
+      eventIdToDelete = matched.id;
+    }
+  }
+
+  if (!eventIdToDelete) return;
+
+  try {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventIdToDelete)}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${state.gcalToken}`
+      }
+    });
+
+    if (res.status === 204 || res.status === 200) {
+      console.log(`已成功從 Google 日曆刪除/消掉：「${task.title}」`);
+    }
+  } catch (err) {
+    console.warn(`自 Google 日曆刪除事件失敗:`, err);
   }
 }
