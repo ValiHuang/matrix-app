@@ -1,10 +1,12 @@
-const CACHE_NAME = 'matrix-app-v4';
+const CACHE_NAME = 'matrix-app-v5';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
-  './manifest.json'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {
