@@ -1,4 +1,4 @@
-const CACHE_NAME = 'matrix-app-v8-gcal';
+const CACHE_NAME = 'matrix-app-v9-merge';
 const ASSETS = [
   './',
   './index.html',

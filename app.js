@@ -100,7 +100,8 @@ const state = {
   calMonth: new Date().getMonth(),
   selectedDateStr: getTodayDateString(),
   gcalClientId: localStorage.getItem('matrix_gcal_client_id') || '642486535439-f1l8au5k6t70m2d8h8bvn78b4g97vcpv.apps.googleusercontent.com',
-  gcalToken: null,
+  gcalToken: localStorage.getItem('matrix_gcal_token') || null,
+  gcalTokenExpiry: parseInt(localStorage.getItem('matrix_gcal_token_expiry') || '0', 10),
   gcalEvents: [] // 快取 Google 日曆行程
 };
 
@@ -970,10 +971,24 @@ function renderDayEvents(dateStr) {
     return;
   }
 
-  // 1. 先顯示 Matrix 四象限任務
+  // 用來追蹤已被比對合併的 Google 事件 ID
+  const matchedGcalEventIds = new Set();
+
+  // 1. 先顯示 Matrix 四象限任務（並比對 Google 日曆事件進行合併）
   dayTasks.forEach(t => {
     const urgent = isUrgent(t.dueDate, state.urgentDaysThreshold);
     const qKey = resolveQuadrant(t.importance, urgent);
+
+    // 比對此待辦是否已在 Google 日曆存在（以名稱比對）
+    const matchedGcal = dayGcalEvents.find(evt => {
+      const summary = (evt.summary || '').trim();
+      return summary === t.title.trim();
+    });
+
+    if (matchedGcal) {
+      matchedGcalEventIds.add(matchedGcal.id);
+    }
+
     const li = document.createElement('li');
     li.className = 'mini-list-item';
     li.innerHTML = `
@@ -982,22 +997,30 @@ function renderDayEvents(dateStr) {
         <span title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span>
       </div>
       <div class="event-actions">
-        <button class="btn-sync-gcal" title="同步新增至 Google 日曆" data-task-id="${t.id}">+Google</button>
+        ${matchedGcal 
+          ? `<span class="badge-synced" title="已同步至 Google 日曆">✓ 已同步</span>
+             ${matchedGcal.htmlLink ? `<a href="${matchedGcal.htmlLink}" target="_blank" rel="noopener" class="btn-icon-subtle" title="在 Google 日曆開啟">🔗</a>` : ''}`
+          : `<button class="btn-sync-gcal" title="同步新增至 Google 日曆" data-task-id="${t.id}">+Google</button>`
+        }
       </div>
     `;
 
-    // 點擊同步至 Google 日曆按鈕
+    // 點擊未同步的 +Google 按鈕
     const btnSync = li.querySelector('.btn-sync-gcal');
-    btnSync.addEventListener('click', (e) => {
-      e.stopPropagation();
-      syncTaskToGoogleCalendar(t);
-    });
+    if (btnSync) {
+      btnSync.addEventListener('click', (e) => {
+        e.stopPropagation();
+        syncTaskToGoogleCalendar(t);
+      });
+    }
 
     dayEventsListEl.appendChild(li);
   });
 
-  // 2. 顯示 Google Calendar 行程
+  // 2. 顯示其餘非由 Matrix 產生的獨立 Google 日曆行程（避免重複）
   dayGcalEvents.forEach(evt => {
+    if (matchedGcalEventIds.has(evt.id)) return; // 已合併，跳過
+
     const li = document.createElement('li');
     li.className = 'mini-list-item gcal-event';
 
@@ -1082,7 +1105,23 @@ let gcalTokenClient = null;
 
 function initGoogleCalendar() {
   inputGcalClientId.value = state.gcalClientId || '';
+
+  // 檢查既有的 Token 是否過期
+  if (state.gcalToken && state.gcalTokenExpiry) {
+    if (Date.now() > state.gcalTokenExpiry) {
+      // 已過期，清除
+      state.gcalToken = null;
+      localStorage.removeItem('matrix_gcal_token');
+      localStorage.removeItem('matrix_gcal_token_expiry');
+    }
+  }
+
   updateGcalUI();
+
+  // 若 Token 依然有效，頁面載入時自動拉取當月行程
+  if (state.gcalToken) {
+    fetchGoogleCalendarEvents();
+  }
 
   // 綁定事件
   btnGcalSettings.addEventListener('click', () => {
@@ -1165,12 +1204,16 @@ function loginGoogleCalendar() {
           return;
         }
         state.gcalToken = tokenResponse.access_token;
+        const expiresInSec = tokenResponse.expires_in || 3599;
+        state.gcalTokenExpiry = Date.now() + expiresInSec * 1000;
+        localStorage.setItem('matrix_gcal_token', state.gcalToken);
+        localStorage.setItem('matrix_gcal_token_expiry', state.gcalTokenExpiry.toString());
         updateGcalUI();
         fetchGoogleCalendarEvents();
       }
     });
 
-    gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+    gcalTokenClient.requestAccessToken({ prompt: '' }); // 使用者已同意過則免重複點擊確認
   } catch (err) {
     console.error('初始化 Google 授權失敗:', err);
     alert(`初始化失敗：${err.message || err}`);
@@ -1184,6 +1227,9 @@ function disconnectGoogleCalendar() {
     });
   }
   state.gcalToken = null;
+  state.gcalTokenExpiry = 0;
+  localStorage.removeItem('matrix_gcal_token');
+  localStorage.removeItem('matrix_gcal_token_expiry');
   state.gcalEvents = [];
   updateGcalUI();
   renderCalendar();
