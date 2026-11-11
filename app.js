@@ -206,6 +206,11 @@ function bindCloudSync() {
 
 // === DOM 元素綁定 ===
 const btnSyncKey = document.getElementById('btn-sync-key');
+const btnInstructions = document.getElementById('btn-instructions');
+const modalInstructions = document.getElementById('modal-instructions');
+const btnCloseInstructions = document.getElementById('btn-close-instructions');
+const btnCloseInstructionsX = document.getElementById('btn-close-instructions-x');
+const btnModalSetKey = document.getElementById('btn-modal-set-key');
 const urgentDaysInput = document.getElementById('setting-urgent-days');
 const newTaskForm = document.getElementById('new-task-form');
 const inputTaskTitle = document.getElementById('input-task-title');
@@ -275,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileView();
   bindCloudSync();
   initGoogleCalendar();
+  initInstructionsModal();
 });
 
 function renderAll() {
@@ -287,9 +293,9 @@ function renderAll() {
 }
 
 // 雲端金鑰彈窗設定
-btnSyncKey.addEventListener('click', () => {
+function promptSetSyncKey() {
   const currentKey = state.syncKey || '';
-  const inputKey = prompt('請輸入您的專屬同步金鑰（所有裝置輸入相同金鑰即可跨裝置自動同步）：', currentKey);
+  const inputKey = prompt('請輸入您的專屬同步金鑰（高強度密碼）：\n所有裝置輸入相同金鑰即可跨裝置自動同步，避免他人猜到。', currentKey);
   
   if (inputKey !== null) {
     const trimmed = inputKey.trim();
@@ -298,11 +304,39 @@ btnSyncKey.addEventListener('click', () => {
     bindCloudSync();
     if (trimmed) {
       alert(`已綁定金鑰：「${trimmed}」！您的資料將與所有使用此金鑰的裝置即時連線。`);
+      if (modalInstructions) modalInstructions.style.display = 'none';
     } else {
       alert('已切換為單機離線模式。');
     }
   }
-});
+}
+
+btnSyncKey.addEventListener('click', promptSetSyncKey);
+
+// === 系統使用須知模組 ===
+function initInstructionsModal() {
+  // 1. 若使用者未設定金鑰，強制跳出使用須知
+  if (!state.syncKey) {
+    modalInstructions.style.display = 'flex';
+  }
+
+  // 2. 點擊頂端「📖 使用須知」按鈕隨時開啟
+  btnInstructions.addEventListener('click', () => {
+    modalInstructions.style.display = 'flex';
+  });
+
+  // 3. 關閉彈窗
+  const closeInstructions = () => {
+    modalInstructions.style.display = 'none';
+  };
+  btnCloseInstructions.addEventListener('click', closeInstructions);
+  btnCloseInstructionsX.addEventListener('click', closeInstructions);
+
+  // 4. 點擊彈窗內「立即設定金鑰」
+  btnModalSetKey.addEventListener('click', () => {
+    promptSetSyncKey();
+  });
+}
 
 // === 1. 渲染四象限 ===
 function renderMatrix() {
@@ -419,7 +453,9 @@ btnBatchComplete.addEventListener('click', () => {
 });
 
 // === 2. 上方使用者輸入與緊急天數偵測 ===
-newTaskForm.addEventListener('submit', (e) => {
+const checkAutoSyncGcal = document.getElementById('check-auto-sync-gcal');
+
+newTaskForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const title = inputTaskTitle.value.trim();
   const dueDate = inputTaskDate.value;
@@ -427,17 +463,23 @@ newTaskForm.addEventListener('submit', (e) => {
 
   if (!title || !dueDate) return;
 
-  state.tasks.push({
+  const newTask = {
     id: Date.now().toString(),
     title,
     dueDate,
     importance
-  });
+  };
 
+  state.tasks.push(newTask);
   inputTaskTitle.value = '';
   persistState();
   renderMatrix();
   renderCalendar();
+
+  // 若使用者勾選了同步 Google 日曆且目前有連線 Token，自動發布至 Google Calendar
+  if (checkAutoSyncGcal && checkAutoSyncGcal.checked && state.gcalToken) {
+    await syncTaskToGoogleCalendar(newTask, false); // false 代表靜默模式，不跳 alert 打擾使用者
+  }
 });
 
 // 緊急天數設定改變即時重算四象限
@@ -1190,12 +1232,14 @@ async function fetchGoogleCalendarEvents() {
   }
 }
 
-// 將 Matrix 四象限單項任務同步推送到 Google 日曆
-async function syncTaskToGoogleCalendar(task) {
+// 將 Matrix 四象限單項任務同步推送到 Google 日曆 (showNotice 控制是否跳出通知)
+async function syncTaskToGoogleCalendar(task, showNotice = true) {
   if (!state.gcalToken) {
-    const wantLogin = confirm('尚未連線至 Google 日曆。是否現在連線？');
-    if (wantLogin) {
-      loginGoogleCalendar();
+    if (showNotice) {
+      const wantLogin = confirm('尚未連線至 Google 日曆。是否現在連線？');
+      if (wantLogin) {
+        loginGoogleCalendar();
+      }
     }
     return;
   }
@@ -1205,7 +1249,7 @@ async function syncTaskToGoogleCalendar(task) {
 
   const eventPayload = {
     summary: task.title,
-    description: `由輕重緩急四象限建立。\n重要度：${task.importance === 'important' ? '⭐ 重要' : '☕ 不重要'}\n截止日：${task.dueDate}`,
+    description: `由個人行政秘書系統(PASS)建立。\n重要度：${task.importance === 'important' ? '⭐ 重要' : '☕ 不重要'}\n截止日：${task.dueDate}`,
     start: {
       date: task.dueDate // 全天事件
     },
@@ -1225,7 +1269,7 @@ async function syncTaskToGoogleCalendar(task) {
     });
 
     if (res.status === 401) {
-      alert('Google 授權已過期，請重新連線。');
+      if (showNotice) alert('Google 授權已過期，請重新連線。');
       disconnectGoogleCalendar();
       return;
     }
@@ -1236,12 +1280,16 @@ async function syncTaskToGoogleCalendar(task) {
     }
 
     const createdEvent = await res.json();
-    alert(`成功同步至 Google 日曆：「${task.title}」！`);
+    if (showNotice) {
+      alert(`成功同步至 Google 日曆：「${task.title}」！`);
+    }
     // 重新抓取行程並更新顯示
     fetchGoogleCalendarEvents();
   } catch (err) {
     console.error('建立 Google 行程失敗:', err);
-    alert(`同步至 Google 日曆失敗：${err.message}`);
+    if (showNotice) {
+      alert(`同步至 Google 日曆失敗：${err.message}`);
+    }
     if (btn) btn.textContent = '+Google';
   }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>四象限事務管理 | Eisenhower Matrix</title>
+  <title>個人行政秘書系統(PASS) | Eisenhower Matrix</title>
   <link rel="manifest" href="manifest.json?v=2">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=2">
@@ -19,11 +19,15 @@
   <header class="app-header">
     <div class="logo-area">
       <span class="logo-icon">🧭</span>
-      <h1>輕重緩急四象限事務管理</h1>
-      <!-- 雲端同步狀態與金鑰按鈕（緊跟在標題後，完全避免被右上角視窗按鈕遮擋） -->
+      <h1>個人行政秘書系統(PASS)</h1>
+      <!-- 雲端同步狀態與金鑰按鈕 -->
       <button id="btn-sync-key" class="btn btn-secondary sync-status-btn" title="設定專屬同步金鑰以跨裝置連線">
         <span class="sync-dot" id="sync-status-dot"></span>
         <span id="sync-status-text">未連線金鑰</span>
+      </button>
+      <!-- 使用須知按鈕（常駐於金鑰按鈕右邊） -->
+      <button id="btn-instructions" class="btn btn-secondary instructions-btn" title="查看系統使用須知與隱私說明">
+        <span>📖 使用須知</span>
       </button>
     </div>
     <div class="header-actions">
@@ -69,8 +73,13 @@
           </div>
 
           <div class="form-item input-submit">
-            <label>&nbsp;</label>
-            <button type="submit" id="btn-add-task" class="btn btn-primary">4. 確認新增</button>
+            <div class="submit-action-wrapper">
+              <label class="auto-sync-label" title="若已連線 Google 日曆，新增時自動同步">
+                <input type="checkbox" id="check-auto-sync-gcal" checked>
+                <span>同步 Google 日曆</span>
+              </label>
+              <button type="submit" id="btn-add-task" class="btn btn-primary">4. 確認新增</button>
+            </div>
           </div>
         </form>
       </section>
@@ -294,6 +303,46 @@
         <ul id="completed-list" class="check-list completed-list"></ul>
       </section>
     </aside>
+  </div>
+
+  <!-- 系統使用須知彈跳視窗 (未設金鑰強制跳出) -->
+  <div id="modal-instructions" class="modal-overlay" style="display:none;">
+    <div class="modal-dialog modal-instructions-dialog">
+      <div class="modal-header">
+        <h3>📖 個人行政秘書系統(PASS) 使用須知</h3>
+        <button id="btn-close-instructions-x" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body instructions-content">
+        <div class="instruction-banner">
+          ⚠️ <strong>提醒：您尚未設定專屬同步金鑰！</strong><br>
+          目前系統僅以<strong>單機離線模式</strong>運作，若清除瀏覽器快取資料可能遺失。
+        </div>
+
+        <section class="instruction-section">
+          <h4>🔐 1. 重要：請設定高強度專屬同步金鑰</h4>
+          <p>
+            本系統具備 Firebase 雲端即時同步功能。任何輸入<strong>相同金鑰</strong>的裝置（電腦、手機、平板）都能同步編輯您的四象限排程、購物清單、記帳與便貼。
+          </p>
+          <ul>
+            <li><strong>設定高強度密碼</strong>：請勿使用簡單常見的字詞（如 <code>123456</code>、<code>admin</code>、<code>test</code> 等），強烈建議使用「英文大小寫 + 數字 + 特殊符號」組合，避免他人意外猜到而能查看或修改您的事物排程。</li>
+            <li><strong>跨裝置隨身同步</strong>：在手機或新電腦開啟本系統時，只需在上方「未連線金鑰」輸入同一組密碼，即可無縫載入所有資料。</li>
+          </ul>
+        </section>
+
+        <section class="instruction-section">
+          <h4>💡 2. 使用安全與操作提醒</h4>
+          <ul>
+            <li><strong>自建金鑰毋須註冊</strong>：直接點擊上方金鑰按鈕輸入即可生效，不用填寫個人帳號信箱，隱私安全無負擔。</li>
+            <li><strong>Google 日曆連動</strong>：月曆側邊欄已支援 Google 日曆雙向串接。登入屬於您個人的 Google 帳號授權，其他人絕無權限存取您的日曆。</li>
+            <li><strong>離線防護 PWA</strong>：本系統支援手機安裝（新增至主畫面），在無網路環境下仍能正常記錄，待連網時自動同步。</li>
+          </ul>
+        </section>
+      </div>
+      <div class="modal-footer instructions-footer">
+        <button id="btn-modal-set-key" class="btn btn-primary">立即設定金鑰</button>
+        <button id="btn-close-instructions" class="btn btn-secondary">關閉</button>
+      </div>
+    </div>
   </div>
 
   <!-- Google Calendar 設定彈跳視窗 -->
