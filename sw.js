@@ -1,4 +1,4 @@
-const CACHE_NAME = 'matrix-app-v10-auto-delete';
+const CACHE_NAME = 'matrix-app-v11-restore-sync';
 const ASSETS = [
   './',
   './index.html',

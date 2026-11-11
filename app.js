@@ -803,18 +803,21 @@ function updateBatchRestoreButton() {
 }
 
 // 批次確認還原至四象限
-btnBatchRestore.addEventListener('click', () => {
+btnBatchRestore.addEventListener('click', async () => {
   if (state.selectedRestoreIds.size === 0) return;
 
+  const restoredTasks = [];
   const remainingCompleted = [];
   state.completedTasks.forEach(task => {
     if (state.selectedRestoreIds.has(task.id)) {
-      state.tasks.push({
+      const restored = {
         id: task.id,
         title: task.title,
         dueDate: task.originalDueDate || getTodayDateString(),
         importance: task.importance || 'important'
-      });
+      };
+      state.tasks.push(restored);
+      restoredTasks.push(restored);
     } else {
       remainingCompleted.push(task);
     }
@@ -827,6 +830,13 @@ btnBatchRestore.addEventListener('click', () => {
   renderMatrix();
   renderCompletedList();
   renderCalendar();
+
+  // 若已連線 Google 日曆，自動將還原的事項再次新增回 Google 日曆
+  if (state.gcalToken && restoredTasks.length > 0) {
+    for (const task of restoredTasks) {
+      await syncTaskToGoogleCalendar(task, false); // 靜默新增，不跳彈窗打擾
+    }
+  }
 });
 
 // 一鍵清空已完成清單
