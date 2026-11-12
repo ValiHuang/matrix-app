@@ -1044,7 +1044,9 @@ btnBatchRestore.addEventListener('click', async () => {
         title: task.title,
         dueDate: task.originalDueDate || getTodayDateString(),
         reminderTime: task.reminderTime || '',
-        importance: task.importance || 'important'
+        importance: task.importance || 'important',
+        syncType: task.syncType || (task.reminderTime ? 'event' : 'task'),
+        gcalEventId: null // 還原時清空舊 ID，由重新同步重新賦予新 ID，避免 ID 衝突
       };
       state.tasks.push(restored);
       restoredTasks.push(restored);
@@ -1749,31 +1751,59 @@ async function syncTaskToGoogleCalendar(task, showNotice = true) {
   }
 }
 
-// 從 Google 日曆或工作清單刪除指定事項 (依 gcalEventId)
+// 從 Google 日曆或工作清單刪除指定事項 (依 gcalEventId，若無則依標題與日期比對備援)
 async function deleteTaskFromGoogleCalendar(task) {
-  if (!state.gcalToken || !task.gcalEventId) return;
+  if (!state.gcalToken) return;
+
+  let eventIdToDelete = task.gcalEventId;
+
+  // 若該物件尚未登記 gcalEventId，則從快取的 gcalEvents 尋找相符標題與日期的事件
+  if (!eventIdToDelete && state.gcalEvents && state.gcalEvents.length > 0) {
+    const cleanDueDate = task.dueDate ? (task.dueDate.includes('T') ? task.dueDate.split('T')[0] : task.dueDate) : (task.originalDueDate || '');
+    const matched = state.gcalEvents.find(evt => {
+      const summary = (evt.summary || '').trim();
+      const evtDate = evt.start?.date || (evt.start?.dateTime ? evt.start.dateTime.split('T')[0] : '');
+      return summary === task.title.trim() && evtDate === cleanDueDate;
+    });
+    if (matched) {
+      eventIdToDelete = matched.id;
+    }
+  }
+
+  if (!eventIdToDelete) return;
 
   try {
-    // 嘗試從 Google Tasks 刪除
-    const resTask = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(task.gcalEventId)}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${state.gcalToken}`
-      }
-    });
+    const isTask = task.syncType === 'task';
+    const isEvent = task.syncType === 'event';
 
-    if (resTask.status === 204 || resTask.status === 200) {
-      console.log(`已成功從 Google Tasks 刪除：「${task.title}」`);
-      return;
+    if (isEvent) {
+      // 確定為活動，直接刪除 Calendar Event
+      await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventIdToDelete)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${state.gcalToken}` }
+      });
+      console.log(`已成功從 Google 日曆刪除活動：「${task.title}」`);
+    } else if (isTask) {
+      // 確定為工作，直接刪除 Google Task
+      await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(eventIdToDelete)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${state.gcalToken}` }
+      });
+      console.log(`已成功從 Google Tasks 刪除工作：「${task.title}」`);
+    } else {
+      // 未知類型，先試 Tasks 若 404 則試 Events
+      const resTask = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(eventIdToDelete)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${state.gcalToken}` }
+      });
+
+      if (resTask.status !== 204 && resTask.status !== 200) {
+        await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventIdToDelete)}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.gcalToken}` }
+        });
+      }
     }
-
-    // 若不是 Task 則嘗試從 Events 刪除 (相容舊有活動)
-    await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(task.gcalEventId)}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${state.gcalToken}`
-      }
-    });
   } catch (err) {
     console.warn(`自 Google 刪除事項失敗:`, err);
   }
