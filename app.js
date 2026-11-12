@@ -593,6 +593,15 @@ function initReminderTimePicker() {
 }
 initReminderTimePicker();
 
+// 提醒時間說明按鈕 (點擊跳出說明彈窗)
+const tooltipReminderTime = document.getElementById('tooltip-reminder-time');
+if (tooltipReminderTime) {
+  tooltipReminderTime.addEventListener('click', (e) => {
+    e.preventDefault();
+    alert('【提醒時間說明】\n\n若是設定提醒時間，Google 日曆會在您所設定的時間發送提醒給您。');
+  });
+}
+
 // 緊急天數說明按鈕 (點擊跳出說明彈窗)
 const tooltipUrgentDays = document.getElementById('tooltip-urgent-days');
 if (tooltipUrgentDays) {

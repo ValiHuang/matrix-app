@@ -61,7 +61,10 @@
           </div>
 
           <div class="form-item input-reminder">
-            <label for="btn-reminder-picker">4. 提醒時間 (選填)</label>
+            <label for="btn-reminder-picker">
+              4. 提醒時間 (選填)
+              <span class="tooltip-icon" id="tooltip-reminder-time" style="cursor:pointer;" title="點擊查看提醒時間說明">ℹ️</span>
+            </label>
             <div class="reminder-picker-wrapper">
               <button type="button" id="btn-reminder-picker" class="btn-reminder-trigger">
                 <span id="reminder-display-text">未設定</span>
@@ -193,7 +196,7 @@
       <!-- 四象限下方：批次確認完成更新按鈕 -->
       <div class="matrix-action-bar">
         <div class="selected-summary">已勾選 <span id="selected-tasks-count">0</span> 項任務</div>
-        <button id="btn-batch-complete" class="btn btn-action" disabled>✓ 確認更新（移至已完成）</button>
+        <button id="btn-batch-complete" class="btn btn-action" disabled>✓ 勾選項目已完成</button>
       </div>
 
     </main>
@@ -337,7 +340,7 @@
       <!-- 側邊欄 5: 已完成清單 (上方確認更新還原 + 一鍵清理) -->
       <section class="side-panel" id="panel-completed">
         <div class="completed-top-controls">
-          <button id="btn-batch-restore" class="btn btn-sm btn-success" disabled>↺ 確認更新（還原所選事項）</button>
+          <button id="btn-batch-restore" class="btn btn-sm btn-success" disabled>↺ 還原所選事項</button>
           <button id="btn-clear-completed" class="btn btn-sm btn-danger" title="清空所有已完成資料">🗑️ 一鍵清理</button>
         </div>
         <div class="selected-summary">已勾選 <span id="selected-completed-count">0</span> 項欲還原</div>
