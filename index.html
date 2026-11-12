@@ -229,7 +229,10 @@
         <div class="calendar-widget">
           <div class="calendar-header">
             <button id="prev-month" class="cal-nav-btn">&lt;</button>
-            <h3 id="current-month-year">2026年 11月</h3>
+            <div class="calendar-header-title">
+              <h3 id="current-month-year">2026年 11月</h3>
+              <button id="btn-refresh-gcal" class="btn-icon-subtle" title="重新整理 Google 行程並補登未同步項目" style="display:none;">🔄</button>
+            </div>
             <button id="next-month" class="cal-nav-btn">&gt;</button>
           </div>
           <div class="calendar-weekdays">
@@ -240,7 +243,6 @@
         <div class="day-events-section">
           <div class="day-events-header">
             <h4>當日事項 (<span id="selected-date-str">--</span>)</h4>
-            <button id="btn-refresh-gcal" class="btn-icon-subtle" title="重新整理 Google 行程" style="display:none;">🔄</button>
           </div>
           <ul id="day-events-list" class="mini-list"></ul>
         </div>

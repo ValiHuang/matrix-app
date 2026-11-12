@@ -1289,9 +1289,9 @@ function initGoogleCalendar() {
     }
   });
 
-  btnRefreshGcal.addEventListener('click', () => {
+  btnRefreshGcal.addEventListener('click', async () => {
     if (state.gcalToken) {
-      fetchGoogleCalendarEvents();
+      await refreshAndSyncMonthTasks();
     }
   });
 }
@@ -1437,6 +1437,57 @@ async function fetchGoogleCalendarEvents() {
       return;
     }
     console.error('載入 Google 行程與工作失敗:', err);
+  } finally {
+    btnRefreshGcal.textContent = '🔄';
+  }
+}
+
+// 點擊重新整理按鈕時：拉取最新日曆 + 補登當月尚未登記到 Google Calendar 的 PASS 事項 (不重複登記、不更動非 PASS 項目)
+async function refreshAndSyncMonthTasks() {
+  if (!state.gcalToken) return;
+
+  btnRefreshGcal.textContent = '⏳';
+
+  try {
+    // 1. 先完整抓取 Google 最新狀態 (Events & Tasks)
+    await fetchGoogleCalendarEvents();
+
+    const year = state.calYear;
+    const month = state.calMonth;
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+    // 2. 篩選當月份的所有 PASS 待辦事項
+    const currentMonthTasks = state.tasks.filter(t => t.dueDate && t.dueDate.startsWith(monthPrefix));
+
+    let newlySyncedCount = 0;
+
+    for (const task of currentMonthTasks) {
+      // 檢查是否已在 Google 日曆存在 (依 ID 或依同日同名比對)
+      const cleanDueDate = task.dueDate.includes('T') ? task.dueDate.split('T')[0] : task.dueDate;
+      const alreadyInGoogle = state.gcalEvents.some(evt => {
+        if (task.gcalEventId && evt.id === task.gcalEventId) return true;
+        const summary = (evt.summary || '').trim();
+        const evtDate = evt.start?.date || (evt.start?.dateTime ? evt.start.dateTime.split('T')[0] : '');
+        return summary === task.title.trim() && evtDate === cleanDueDate;
+      });
+
+      // 若尚未在 Google 登記，則同步新增上去
+      if (!alreadyInGoogle) {
+        await syncTaskToGoogleCalendar(task, false);
+        newlySyncedCount++;
+      }
+    }
+
+    // 若有補登項目，再次刷新日曆與當日事項
+    if (newlySyncedCount > 0) {
+      await fetchGoogleCalendarEvents();
+      alert(`重新整理完成！已自動補登 ${newlySyncedCount} 件尚未同步的當月事項至 Google 日曆。`);
+    } else {
+      renderCalendar();
+      renderDayEvents(state.selectedDateStr);
+    }
+  } catch (err) {
+    console.error('重新整理與補登失敗:', err);
   } finally {
     btnRefreshGcal.textContent = '🔄';
   }

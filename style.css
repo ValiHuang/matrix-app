@@ -992,6 +992,12 @@ body {
   margin-bottom: 8px;
 }
 
+.calendar-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .cal-nav-btn {
   background: white;
   border: 1px solid var(--border-color);
