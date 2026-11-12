@@ -1101,13 +1101,16 @@ function renderDayEvents(dateStr) {
     const qKey = resolveQuadrant(t.importance, urgent);
 
     // 比對此待辦是否已在 Google 日曆存在（以 gcalEventId 或名稱比對）
-    const matchedGcal = t.gcalEventId || dayGcalEvents.find(evt => {
+    let matchedGcal = dayGcalEvents.find(evt => {
+      if (t.gcalEventId && evt.id === t.gcalEventId) return true;
       const summary = (evt.summary || '').trim();
       return summary === t.title.trim();
     });
 
-    if (matchedGcal && typeof matchedGcal === 'object' && matchedGcal.id) {
+    if (matchedGcal) {
       matchedGcalEventIds.add(matchedGcal.id);
+    } else if (t.gcalEventId) {
+      matchedGcalEventIds.add(t.gcalEventId);
     }
 
     const li = document.createElement('li');
