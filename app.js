@@ -1291,7 +1291,7 @@ function disconnectGoogleCalendar() {
   renderDayEvents(state.selectedDateStr);
 }
 
-// 取得當前月曆檢視月份的所有行程
+// 取得當前月曆檢視月份的所有行程與工作 (Events & Tasks)
 async function fetchGoogleCalendarEvents() {
   if (!state.gcalToken) return;
 
@@ -1304,30 +1304,52 @@ async function fetchGoogleCalendarEvents() {
   btnRefreshGcal.textContent = '⏳';
 
   try {
-    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`;
-    const res = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${state.gcalToken}`
-      }
+    // 1. 同步拉取 Google Calendar 活動
+    const urlEvents = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`;
+    const pEvents = fetch(urlEvents, {
+      headers: { 'Authorization': `Bearer ${state.gcalToken}` }
+    }).then(async res => {
+      if (res.status === 401) throw new Error('AUTH_EXPIRED');
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.items || []).map(item => ({
+        id: item.id,
+        summary: item.summary,
+        start: item.start,
+        htmlLink: item.htmlLink,
+        type: 'event'
+      }));
     });
 
-    if (res.status === 401) {
+    // 2. 同步拉取 Google Tasks 工作
+    const urlTasks = `https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?showCompleted=false&dueMin=${encodeURIComponent(timeMin)}&dueMax=${encodeURIComponent(timeMax)}`;
+    const pTasks = fetch(urlTasks, {
+      headers: { 'Authorization': `Bearer ${state.gcalToken}` }
+    }).then(async res => {
+      if (res.status === 401) throw new Error('AUTH_EXPIRED');
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.items || []).map(item => ({
+        id: item.id,
+        summary: item.title,
+        start: { date: item.due ? item.due.split('T')[0] : '' },
+        htmlLink: '',
+        type: 'task'
+      }));
+    });
+
+    const [events, tasks] = await Promise.all([pEvents, pTasks]);
+    state.gcalEvents = [...events, ...tasks];
+
+    renderCalendar();
+    renderDayEvents(state.selectedDateStr);
+  } catch (err) {
+    if (err.message === 'AUTH_EXPIRED') {
       alert('Google 授權已過期，請重新點擊「連線」登入。');
       disconnectGoogleCalendar();
       return;
     }
-
-    if (!res.ok) {
-      throw new Error(`Google Calendar API 回傳錯誤: ${res.status}`);
-    }
-
-    const data = await res.json();
-    state.gcalEvents = data.items || [];
-    renderCalendar();
-    renderDayEvents(state.selectedDateStr);
-  } catch (err) {
-    console.error('載入 Google 行程失敗:', err);
-    alert(`載入 Google 行程失敗：${err.message}`);
+    console.error('載入 Google 行程與工作失敗:', err);
   } finally {
     btnRefreshGcal.textContent = '🔄';
   }
