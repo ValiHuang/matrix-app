@@ -1334,7 +1334,7 @@ function disconnectGoogleCalendar() {
   renderDayEvents(state.selectedDateStr);
 }
 
-// 取得當前月曆檢視月份的所有行程
+// 取得當前月曆檢視月份的所有行程 (包含 Calendar 活動與 Google Tasks 工作)
 async function fetchGoogleCalendarEvents() {
   if (!state.gcalToken) return;
 
@@ -1346,11 +1346,10 @@ async function fetchGoogleCalendarEvents() {
   btnRefreshGcal.textContent = '⏳';
 
   try {
+    // 1. 拉取 Google Calendar Events (活動)
     const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`;
     const res = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${state.gcalToken}`
-      }
+      headers: { 'Authorization': `Bearer ${state.gcalToken}` }
     });
 
     if (res.status === 401) {
@@ -1359,12 +1358,40 @@ async function fetchGoogleCalendarEvents() {
       return;
     }
 
-    if (!res.ok) {
-      throw new Error(`Google Calendar API 回傳錯誤: ${res.status}`);
+    let eventsList = [];
+    if (res.ok) {
+      const data = await res.json();
+      eventsList = data.items || [];
     }
 
-    const data = await res.json();
-    state.gcalEvents = data.items || [];
+    // 2. 拉取 Google Tasks (工作)
+    try {
+      const tasksRes = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?showCompleted=true', {
+        headers: { 'Authorization': `Bearer ${state.gcalToken}` }
+      });
+      if (tasksRes.ok) {
+        const tasksData = await tasksRes.json();
+        const googleTasks = tasksData.items || [];
+        // 將 Google Tasks 轉換為相容的日曆事件結構以便月曆渲染
+        googleTasks.forEach(gt => {
+          if (gt.due) {
+            const dueDateOnly = gt.due.split('T')[0];
+            eventsList.push({
+              id: gt.id,
+              summary: `☑️ ${gt.title}`,
+              start: { date: dueDateOnly },
+              end: { date: dueDateOnly },
+              isGoogleTask: true,
+              taskStatus: gt.status
+            });
+          }
+        });
+      }
+    } catch (taskErr) {
+      console.warn('拉取 Google Tasks 略過:', taskErr);
+    }
+
+    state.gcalEvents = eventsList;
     renderCalendar();
     renderDayEvents(state.selectedDateStr);
   } catch (err) {
@@ -1433,19 +1460,17 @@ async function syncTaskToGoogleCalendar(task, showNotice = true) {
   try {
     if (!isReminderEvent) {
       // === 模式 A：無提醒時間 -> Google Tasks (工作) ===
-      let taskDueISO;
-      try {
-        const cleanDate = (task.dueDate || '').replace(/\//g, '-');
-        taskDueISO = new Date(`${cleanDate}T00:00:00.000Z`).toISOString();
-      } catch (err) {
-        taskDueISO = new Date().toISOString();
-      }
+      // 官方標準格式：必須是 RFC 3339 且為 UTC 午夜，不得帶有毫秒
+      const cleanDate = (task.dueDate || getTodayDateString()).replace(/\//g, '-');
+      const taskDueRFC3339 = `${cleanDate}T00:00:00Z`;
 
       const taskPayload = {
         title: task.title,
         notes: `由個人行政秘書系統(PASS)建立。\n重要度：${task.importance === 'important' ? '⭐ 重要' : '☕ 不重要'}`,
-        due: taskDueISO
+        due: taskDueRFC3339
       };
+
+      console.log('正在傳送 Google Task 請求:', taskPayload);
 
       const res = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
         method: 'POST',
@@ -1463,11 +1488,19 @@ async function syncTaskToGoogleCalendar(task, showNotice = true) {
       }
 
       if (!res.ok) {
-        console.warn('Google Tasks API 未回應或需權限，退回日曆全天事件建立');
-        return await syncTaskAsAllDayEvent(task, showNotice);
+        const errJson = await res.json().catch(() => ({}));
+        console.error('Google Tasks API 回傳錯誤:', res.status, errJson);
+        const errMsg = errJson.error?.message || `HTTP ${res.status}`;
+        
+        // 如果是因為 Google Tasks 權限未授權或未開通，跳出明確提示
+        if (showNotice) {
+          alert(`同步至 Google 日曆「工作」失敗：${errMsg}\n(若首次使用，請確認已啟用 Google Tasks API 並已授權存取 Tasks)`);
+        }
+        return false;
       }
 
       const createdTask = await res.json();
+      console.log('Google Task 建立成功:', createdTask);
       if (createdTask && createdTask.id) {
         task.gcalTaskId = createdTask.id;
         persistState();

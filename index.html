@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="事務管理">
-  <link rel="stylesheet" href="style.css?v=20261112_1635">
+  <link rel="stylesheet" href="style.css?v=20261112_1642">
 </head>
 <body>
   <!-- 頂部應用程式標題 -->
@@ -388,11 +388,11 @@
   <!-- Firebase SDK (Compat 版，相容純前端無打包工具架構) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="app.js?v=20261112_1635"></script>
+  <script src="app.js?v=20261112_1642"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=20261112_1635').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=20261112_1642').then(reg => {
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             installingWorker.onstatechange = () => {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'matrix-app-v14-robust-gcal-sync';
+const CACHE_NAME = 'matrix-app-v15-tasks-api-direct';
 const ASSETS = [
   './',
   './index.html',
