@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="事務管理">
-  <link rel="stylesheet" href="style.css?v=20261111_0825">
+  <link rel="stylesheet" href="style.css?v=20261112_1615">
 </head>
 <body>
   <!-- 頂部應用程式標題 -->
@@ -58,6 +58,11 @@
               <option value="important">⭐ 重要</option>
               <option value="not_important">☕ 不重要</option>
             </select>
+          </div>
+
+          <div class="form-item input-reminder">
+            <label for="input-task-time">4. 提醒時間 (選填)</label>
+            <input type="time" id="input-task-time" placeholder="未設定">
           </div>
 
           <div class="form-item input-urgent-setting">
@@ -186,7 +191,10 @@
         <div class="calendar-widget">
           <div class="calendar-header">
             <button id="prev-month" class="cal-nav-btn">&lt;</button>
-            <h3 id="current-month-year">2026年 11月</h3>
+            <div class="calendar-header-title">
+              <h3 id="current-month-year">2026年 11月</h3>
+              <button id="btn-refresh-gcal" class="btn-icon-subtle" title="重新整理 Google 行程並補登未同步項目">🔄</button>
+            </div>
             <button id="next-month" class="cal-nav-btn">&gt;</button>
           </div>
           <div class="calendar-weekdays">
@@ -197,7 +205,6 @@
         <div class="day-events-section">
           <div class="day-events-header">
             <h4>當日事項 (<span id="selected-date-str">--</span>)</h4>
-            <button id="btn-refresh-gcal" class="btn-icon-subtle" title="重新整理 Google 行程" style="display:none;">🔄</button>
           </div>
           <ul id="day-events-list" class="mini-list"></ul>
         </div>
@@ -208,7 +215,7 @@
         <div class="panel-header">
           <h3>採買備忘清單</h3>
           <div class="panel-header-actions">
-            <span class="count-badge" id="shopping-count">0</span>
+            <span class="count-badge" id="shopping-count" title="已打勾項目數量">已選 0</span>
             <button id="btn-clear-done-shopping" class="btn btn-sm btn-secondary" title="清除所有已打勾項目">清除已完成</button>
           </div>
         </div>
@@ -381,11 +388,11 @@
   <!-- Firebase SDK (Compat 版，相容純前端無打包工具架構) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="app.js?v=20261111_1030"></script>
+  <script src="app.js?v=20261112_1615"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=20261111_0825').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=20261112_1615').then(reg => {
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             installingWorker.onstatechange = () => {

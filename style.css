@@ -151,8 +151,8 @@ body {
 
 .input-form-grid {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1.1fr 1.5fr auto;
-  gap: 12px;
+  grid-template-columns: 1.8fr 1.1fr 1fr 1fr 1.4fr auto;
+  gap: 10px;
   align-items: flex-end;
 }
 
@@ -178,6 +178,7 @@ body {
 
 .form-item input[type="text"],
 .form-item input[type="date"],
+.form-item input[type="time"],
 .form-item select {
   padding: 8px 10px;
   border: 1px solid var(--border-color);
@@ -413,6 +414,24 @@ body {
 .task-due {
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+.task-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.task-reminder-badge {
+  font-size: 0.72rem;
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
 }
 
 .task-due.is-urgent {
@@ -871,6 +890,12 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+}
+
+.calendar-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cal-nav-btn {

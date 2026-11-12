@@ -1,4 +1,4 @@
-const CACHE_NAME = 'matrix-app-v11-restore-sync';
+const CACHE_NAME = 'matrix-app-v13-tasks-events';
 const ASSETS = [
   './',
   './index.html',
