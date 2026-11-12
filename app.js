@@ -433,16 +433,28 @@ btnCloseSyncKeyX.addEventListener('click', closeSyncKeyModal);
 btnSyncKey.addEventListener('click', openSyncKeyModal);
 
 // === 系統使用須知模組 ===
+const instructionBannerWarning = document.getElementById('instruction-banner-warning');
+
+function openInstructionsModal() {
+  // 動態判定：若已設定金鑰，隱藏「尚未設定專屬同步金鑰」紅框與「立即設定金鑰」按鈕，避免使用者困惑
+  if (state.syncKey) {
+    if (instructionBannerWarning) instructionBannerWarning.style.display = 'none';
+    if (btnModalSetKey) btnModalSetKey.style.display = 'none';
+  } else {
+    if (instructionBannerWarning) instructionBannerWarning.style.display = 'block';
+    if (btnModalSetKey) btnModalSetKey.style.display = 'inline-block';
+  }
+  modalInstructions.style.display = 'flex';
+}
+
 function initInstructionsModal() {
-  // 1. 若使用者未設定金鑰，強制跳出使用須知
+  // 1. 若使用者未設定金鑰，初次載入強制跳出使用須知
   if (!state.syncKey) {
-    modalInstructions.style.display = 'flex';
+    openInstructionsModal();
   }
 
   // 2. 點擊頂端「📖 使用須知」按鈕隨時開啟
-  btnInstructions.addEventListener('click', () => {
-    modalInstructions.style.display = 'flex';
-  });
+  btnInstructions.addEventListener('click', openInstructionsModal);
 
   // 3. 關閉彈窗
   const closeInstructions = () => {
@@ -453,6 +465,7 @@ function initInstructionsModal() {
 
   // 4. 點擊彈窗內「立即設定金鑰」
   btnModalSetKey.addEventListener('click', () => {
+    modalInstructions.style.display = 'none';
     openSyncKeyModal();
   });
 }
