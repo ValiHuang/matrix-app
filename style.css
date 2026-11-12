@@ -721,6 +721,57 @@ body {
   padding: 12px 20px;
 }
 
+/* 高強度同步金鑰彈窗樣式 */
+.key-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.key-requirements-box {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.req-item {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.req-item.valid {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.req-item.invalid {
+  color: #ef4444;
+}
+
+.key-status-msg {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 4px;
+  min-height: 20px;
+}
+
+.key-status-msg.success {
+  color: #059669;
+}
+
+.key-status-msg.error {
+  color: #dc2626;
+}
+
 /* Google Calendar 整合元件樣式 */
 .btn-xs {
   padding: 2px 6px;

@@ -288,26 +288,132 @@ function renderAll() {
   renderCalendar();
 }
 
-// 雲端金鑰彈窗設定
-function promptSetSyncKey() {
-  const currentKey = state.syncKey || '';
-  const inputKey = prompt('請輸入您的專屬同步金鑰（高強度密碼）：\n所有裝置輸入相同金鑰即可跨裝置自動同步，避免他人猜到。', currentKey);
-  
-  if (inputKey !== null) {
-    const trimmed = inputKey.trim();
-    state.syncKey = trimmed;
-    localStorage.setItem('matrix_sync_key', trimmed);
-    bindCloudSync();
-    if (trimmed) {
-      alert(`已綁定金鑰：「${trimmed}」！您的資料將與所有使用此金鑰的裝置即時連線。`);
-      if (modalInstructions) modalInstructions.style.display = 'none';
-    } else {
-      alert('已切換為單機離線模式。');
-    }
+// === 專屬高強度同步金鑰模組 ===
+const modalSyncKey = document.getElementById('modal-sync-key');
+const inputCustomSyncKey = document.getElementById('input-custom-sync-key');
+const btnGenerateSafeKey = document.getElementById('btn-generate-safe-key');
+const btnSaveSyncKey = document.getElementById('btn-save-sync-key');
+const btnClearSyncKey = document.getElementById('btn-clear-sync-key');
+const btnCancelSyncKey = document.getElementById('btn-cancel-sync-key');
+const btnCloseSyncKeyX = document.getElementById('btn-close-sync-key-x');
+
+const reqLenEl = document.getElementById('req-len');
+const reqCharEl = document.getElementById('req-char');
+const reqNoSpaceEl = document.getElementById('req-nospace');
+const keyValidationMsgEl = document.getElementById('key-validation-message');
+
+// 金鑰驗證規則
+function validateSyncKey(key) {
+  const isLenValid = key.length >= 8;
+  const hasLetter = /[a-zA-Z]/.test(key);
+  const hasDigit = /[0-9]/.test(key);
+  const isCharValid = hasLetter && hasDigit;
+  // 禁止空白及非 ASCII（例如中文）
+  const hasNoSpaceOrUnicode = !/\s/.test(key) && /^[\x20-\x7E]+$/.test(key);
+
+  return {
+    isLenValid,
+    isCharValid,
+    hasNoSpaceOrUnicode,
+    isValid: isLenValid && isCharValid && hasNoSpaceOrUnicode
+  };
+}
+
+// 更新即時指示燈
+function updateKeyValidationUI(key) {
+  if (!key) {
+    reqLenEl.className = 'req-item';
+    reqLenEl.querySelector('span').textContent = '⚪';
+    reqCharEl.className = 'req-item';
+    reqCharEl.querySelector('span').textContent = '⚪';
+    reqNoSpaceEl.className = 'req-item';
+    reqNoSpaceEl.querySelector('span').textContent = '⚪';
+    keyValidationMsgEl.textContent = '';
+    btnSaveSyncKey.disabled = true;
+    return;
+  }
+
+  const res = validateSyncKey(key);
+
+  reqLenEl.className = `req-item ${res.isLenValid ? 'valid' : 'invalid'}`;
+  reqLenEl.querySelector('span').textContent = res.isLenValid ? '✅' : '❌';
+
+  reqCharEl.className = `req-item ${res.isCharValid ? 'valid' : 'invalid'}`;
+  reqCharEl.querySelector('span').textContent = res.isCharValid ? '✅' : '❌';
+
+  reqNoSpaceEl.className = `req-item ${res.hasNoSpaceOrUnicode ? 'valid' : 'invalid'}`;
+  reqNoSpaceEl.querySelector('span').textContent = res.hasNoSpaceOrUnicode ? '✅' : '❌';
+
+  if (res.isValid) {
+    keyValidationMsgEl.className = 'key-status-msg success';
+    keyValidationMsgEl.textContent = '🔒 安全強度符合標準！可點擊確認綁定。';
+    btnSaveSyncKey.disabled = false;
+  } else {
+    keyValidationMsgEl.className = 'key-status-msg error';
+    keyValidationMsgEl.textContent = '⚠️ 請滿足上述所有安全標準';
+    btnSaveSyncKey.disabled = true;
   }
 }
 
-btnSyncKey.addEventListener('click', promptSetSyncKey);
+// 隨機產生高強度安全金鑰 (格式：PASS-xxx#xxx)
+function generateSecureRandomKey() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+  let rand = '';
+  for (let i = 0; i < 10; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `Pass-${rand}`;
+}
+
+// 開啟金鑰設定彈窗
+function openSyncKeyModal() {
+  inputCustomSyncKey.value = state.syncKey || '';
+  updateKeyValidationUI(inputCustomSyncKey.value);
+  modalSyncKey.style.display = 'flex';
+}
+
+function closeSyncKeyModal() {
+  modalSyncKey.style.display = 'none';
+}
+
+// 綁定金鑰彈窗各按鈕事件
+inputCustomSyncKey.addEventListener('input', (e) => {
+  updateKeyValidationUI(e.target.value.trim());
+});
+
+btnGenerateSafeKey.addEventListener('click', () => {
+  const safeKey = generateSecureRandomKey();
+  inputCustomSyncKey.value = safeKey;
+  updateKeyValidationUI(safeKey);
+});
+
+btnSaveSyncKey.addEventListener('click', () => {
+  const key = inputCustomSyncKey.value.trim();
+  const res = validateSyncKey(key);
+  if (!res.isValid) return;
+
+  state.syncKey = key;
+  localStorage.setItem('matrix_sync_key', key);
+  bindCloudSync();
+  closeSyncKeyModal();
+  if (modalInstructions) modalInstructions.style.display = 'none';
+  alert(`✅ 成功綁定高強度金鑰：「${key}」！\n所有輸入此金鑰的裝置將即時跨端同步。`);
+});
+
+btnClearSyncKey.addEventListener('click', () => {
+  if (confirm('確定要切換為單機模式嗎？將中斷跨裝置雲端同步。')) {
+    state.syncKey = '';
+    localStorage.removeItem('matrix_sync_key');
+    bindCloudSync();
+    closeSyncKeyModal();
+    alert('已切換為單機離線模式。');
+  }
+});
+
+btnCancelSyncKey.addEventListener('click', closeSyncKeyModal);
+btnCloseSyncKeyX.addEventListener('click', closeSyncKeyModal);
+
+btnSyncKey.addEventListener('click', openSyncKeyModal);
 
 // === 系統使用須知模組 ===
 function initInstructionsModal() {
@@ -330,7 +436,7 @@ function initInstructionsModal() {
 
   // 4. 點擊彈窗內「立即設定金鑰」
   btnModalSetKey.addEventListener('click', () => {
-    promptSetSyncKey();
+    openSyncKeyModal();
   });
 }
 

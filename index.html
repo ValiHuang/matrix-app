@@ -390,6 +390,44 @@
     </div>
   </div>
 
+  <!-- 專屬高強度同步金鑰彈跳視窗 -->
+  <div id="modal-sync-key" class="modal-overlay" style="display:none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>🔐 設定專屬同步金鑰</h3>
+        <button id="btn-close-sync-key-x" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">
+          輸入<strong>相同金鑰</strong>的所有裝置（手機、平板、電腦）將會即時同步您的資料。<br>
+          為防範他人撞庫猜測，系統強制要求<strong>高強度安全金鑰</strong>。
+        </p>
+
+        <div class="form-item">
+          <label for="input-custom-sync-key">專屬金鑰 (需符合安全標準)：</label>
+          <div class="key-input-wrapper">
+            <input type="text" id="input-custom-sync-key" placeholder="例如：Pass8899#Key" class="input-full" autocomplete="off">
+            <button type="button" id="btn-generate-safe-key" class="btn btn-xs btn-secondary" title="隨機產生高強度金鑰">🎲 隨機產生</button>
+          </div>
+        </div>
+
+        <!-- 即時安全檢核清單 -->
+        <div class="key-requirements-box">
+          <div class="req-item" id="req-len"><span>⚪</span> 至少 8 個字元</div>
+          <div class="req-item" id="req-char"><span>⚪</span> 包含英文字母與數字 (允許特殊符號)</div>
+          <div class="req-item" id="req-nospace"><span>⚪</span> 不能包含空白鍵或中文字元</div>
+        </div>
+
+        <div id="key-validation-message" class="key-status-msg"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-save-sync-key" class="btn btn-primary" disabled>確認綁定金鑰</button>
+        <button id="btn-clear-sync-key" class="btn btn-danger" style="margin-right:auto;">切換單機模式</button>
+        <button id="btn-cancel-sync-key" class="btn btn-secondary">取消</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Google Identity Services (GIS SDK) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Firebase SDK (Compat 版，相容純前端無打包工具架構) -->
