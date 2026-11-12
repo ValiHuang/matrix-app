@@ -498,6 +498,8 @@ newTaskForm.addEventListener('submit', async (e) => {
   state.tasks.push(newTask);
   inputTaskTitle.value = '';
   if (inputTaskTime) inputTaskTime.value = '';
+  if (reminderDisplayText) reminderDisplayText.textContent = '未設定';
+  if (btnClearReminderDirect) btnClearReminderDirect.style.display = 'none';
   persistState();
   renderMatrix();
   renderCalendar();
@@ -507,6 +509,89 @@ newTaskForm.addEventListener('submit', async (e) => {
     syncTaskToGoogleCalendar(newTask, false).catch(err => console.error('背景同步 Google 失敗:', err));
   }
 });
+
+// 提醒時間自訂選擇器元件
+const btnReminderPicker = document.getElementById('btn-reminder-picker');
+const reminderDisplayText = document.getElementById('reminder-display-text');
+const btnClearReminderDirect = document.getElementById('btn-clear-reminder-direct');
+const reminderDropdownModal = document.getElementById('reminder-dropdown-modal');
+const timeAmpmSelect = document.getElementById('time-ampm');
+const timeHourSelect = document.getElementById('time-hour');
+const timeMinuteSelect = document.getElementById('time-minute');
+const btnCancelReminder = document.getElementById('btn-cancel-reminder');
+const btnConfirmReminder = document.getElementById('btn-confirm-reminder');
+
+function initReminderTimePicker() {
+  if (!timeHourSelect || !timeMinuteSelect) return;
+
+  // 填入 01 到 12 小時
+  timeHourSelect.innerHTML = '';
+  for (let i = 1; i <= 12; i++) {
+    const opt = document.createElement('option');
+    const val = String(i).padStart(2, '0');
+    opt.value = val;
+    opt.textContent = val;
+    if (i === 9) opt.selected = true; // 預設 09
+    timeHourSelect.appendChild(opt);
+  }
+
+  // 填入 00 到 55 分鐘 (每 5 分鐘一格)
+  timeMinuteSelect.innerHTML = '';
+  for (let i = 0; i < 60; i += 5) {
+    const opt = document.createElement('option');
+    const val = String(i).padStart(2, '0');
+    opt.value = val;
+    opt.textContent = val;
+    if (i === 0) opt.selected = true; // 預設 00
+    timeMinuteSelect.appendChild(opt);
+  }
+
+  // 點擊觸發按鈕開關選單
+  btnReminderPicker.addEventListener('click', (e) => {
+    if (e.target.id === 'btn-clear-reminder-direct') return;
+    const isShowing = reminderDropdownModal.style.display === 'block';
+    reminderDropdownModal.style.display = isShowing ? 'none' : 'block';
+  });
+
+  // 點擊「確定」
+  btnConfirmReminder.addEventListener('click', () => {
+    const ampm = timeAmpmSelect.value;
+    let hour = parseInt(timeHourSelect.value, 10);
+    const minute = timeMinuteSelect.value;
+
+    let hour24 = hour;
+    if (ampm === 'PM' && hour < 12) hour24 += 12;
+    if (ampm === 'AM' && hour === 12) hour24 = 0;
+
+    const time24 = `${String(hour24).padStart(2, '0')}:${minute}`;
+    inputTaskTime.value = time24;
+    reminderDisplayText.textContent = `${ampm === 'AM' ? '上午' : '下午'} ${timeHourSelect.value}:${minute}`;
+    btnClearReminderDirect.style.display = 'inline-block';
+    reminderDropdownModal.style.display = 'none';
+  });
+
+  // 點擊「取消」
+  btnCancelReminder.addEventListener('click', () => {
+    reminderDropdownModal.style.display = 'none';
+  });
+
+  // 點擊右上角「✕」清除已選時間
+  btnClearReminderDirect.addEventListener('click', (e) => {
+    e.stopPropagation();
+    inputTaskTime.value = '';
+    reminderDisplayText.textContent = '未設定';
+    btnClearReminderDirect.style.display = 'none';
+    reminderDropdownModal.style.display = 'none';
+  });
+
+  // 點擊外面自動關閉選單
+  document.addEventListener('click', (e) => {
+    if (!btnReminderPicker.contains(e.target) && !reminderDropdownModal.contains(e.target)) {
+      reminderDropdownModal.style.display = 'none';
+    }
+  });
+}
+initReminderTimePicker();
 
 // 緊急天數設定改變即時重算四象限
 urgentDaysInput.addEventListener('input', (e) => {

@@ -61,8 +61,44 @@
           </div>
 
           <div class="form-item input-reminder">
-            <label for="input-task-time">4. 提醒時間 (選填)</label>
-            <input type="time" id="input-task-time">
+            <label for="btn-reminder-picker">4. 提醒時間 (選填)</label>
+            <div class="reminder-picker-wrapper">
+              <button type="button" id="btn-reminder-picker" class="btn-reminder-trigger">
+                <span id="reminder-display-text">未設定</span>
+                <span class="reminder-clear-btn" id="btn-clear-reminder-direct" title="清除提醒" style="display:none;">✕</span>
+              </button>
+              <input type="hidden" id="input-task-time" value="">
+              
+              <!-- 自訂時間選擇彈窗 (包含 上午/下午、時、分、取消、確定) -->
+              <div id="reminder-dropdown-modal" class="reminder-dropdown" style="display:none;">
+                <div class="reminder-dropdown-header">選擇提醒時間</div>
+                <div class="time-select-columns">
+                  <div class="time-col">
+                    <label>時段</label>
+                    <select id="time-ampm">
+                      <option value="AM">上午</option>
+                      <option value="PM" selected>下午</option>
+                    </select>
+                  </div>
+                  <div class="time-col">
+                    <label>時</label>
+                    <select id="time-hour">
+                      <!-- 01 到 12 -->
+                    </select>
+                  </div>
+                  <div class="time-col">
+                    <label>分</label>
+                    <select id="time-minute">
+                      <!-- 00 到 55 (每5分) -->
+                    </select>
+                  </div>
+                </div>
+                <div class="reminder-dropdown-actions">
+                  <button type="button" id="btn-cancel-reminder" class="btn btn-xs btn-secondary">取消</button>
+                  <button type="button" id="btn-confirm-reminder" class="btn btn-xs btn-primary">確定</button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="form-item input-urgent-setting">
