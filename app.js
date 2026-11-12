@@ -217,6 +217,7 @@ const newTaskForm = document.getElementById('new-task-form');
 const inputTaskTitle = document.getElementById('input-task-title');
 const inputTaskDate = document.getElementById('input-task-date');
 const inputTaskImportance = document.getElementById('input-task-importance');
+const inputTaskTime = document.getElementById('input-task-time');
 
 const btnBatchComplete = document.getElementById('btn-batch-complete');
 const selectedTasksCountEl = document.getElementById('selected-tasks-count');
@@ -381,7 +382,10 @@ function renderMatrix() {
         <input type="checkbox" class="task-checkbox" data-id="${task.id}" ${isChecked ? 'checked' : ''}>
         <div class="task-info">
           <span class="task-title">${escapeHtml(task.title)}</span>
-          <span class="task-due ${urgent ? 'is-urgent' : ''}">📅 截止：${task.dueDate} ${urgent ? '⚠️ 緊急' : ''}</span>
+          <div class="task-meta-row">
+            <span class="task-due ${urgent ? 'is-urgent' : ''}">📅 截止：${task.dueDate} ${urgent ? '⚠️ 緊急' : ''}</span>
+            ${task.reminderTime ? `<span class="task-reminder-badge">⏰ 提醒：${escapeHtml(task.reminderTime)}</span>` : ''}
+          </div>
         </div>
       </div>
       <button class="task-del-btn" data-id="${task.id}" title="直接刪除">🗑️</button>
@@ -444,6 +448,8 @@ btnBatchComplete.addEventListener('click', async () => {
         title: task.title,
         importance: task.importance,
         originalDueDate: task.dueDate,
+        reminderTime: task.reminderTime || '',
+        syncType: task.syncType || (task.reminderTime ? 'event' : 'task'),
         completedAt: getTodayDateString(),
         gcalEventId: task.gcalEventId || null
       });
@@ -477,6 +483,7 @@ newTaskForm.addEventListener('submit', async (e) => {
   const title = inputTaskTitle.value.trim();
   const dueDate = inputTaskDate.value;
   const importance = inputTaskImportance.value;
+  const reminderTime = inputTaskTime ? inputTaskTime.value : '';
 
   if (!title || !dueDate) return;
 
@@ -484,18 +491,20 @@ newTaskForm.addEventListener('submit', async (e) => {
     id: Date.now().toString(),
     title,
     dueDate,
-    importance
+    importance,
+    reminderTime: reminderTime || ''
   };
 
   state.tasks.push(newTask);
   inputTaskTitle.value = '';
+  if (inputTaskTime) inputTaskTime.value = '';
   persistState();
   renderMatrix();
   renderCalendar();
 
-  // 若使用者勾選了同步 Google 日曆且目前有連線 Token，背景非同步發布至 Google Tasks，不阻塞前端 UI
+  // 若使用者勾選了同步 Google 日曆且目前有連線 Token，背景非同步發布至 Google，不阻塞前端 UI
   if (checkAutoSyncGcal && checkAutoSyncGcal.checked && state.gcalToken) {
-    syncTaskToGoogleCalendar(newTask, false).catch(err => console.error('背景同步 Google Task 失敗:', err));
+    syncTaskToGoogleCalendar(newTask, false).catch(err => console.error('背景同步 Google 失敗:', err));
   }
 });
 
@@ -814,6 +823,7 @@ btnBatchRestore.addEventListener('click', async () => {
         id: task.id,
         title: task.title,
         dueDate: task.originalDueDate || getTodayDateString(),
+        reminderTime: task.reminderTime || '',
         importance: task.importance || 'important'
       };
       state.tasks.push(restored);
@@ -1355,7 +1365,9 @@ async function fetchGoogleCalendarEvents() {
   }
 }
 
-// 將 Matrix 四象限單項任務同步推送到 Google 日曆「工作 (Tasks)」(showNotice 控制是否跳出通知)
+// 將 Matrix 四象限單項任務同步推送到 Google：
+// 1. 若有填寫「提醒時間」：新增為 Google Calendar「活動 (Event)」，並在設定時間準時發出活動提醒通知
+// 2. 若無填寫「提醒時間」：新增為 Google Calendar「工作 (Task)」
 async function syncTaskToGoogleCalendar(task, showNotice = true) {
   if (!state.gcalToken) {
     if (showNotice) {
@@ -1370,51 +1382,117 @@ async function syncTaskToGoogleCalendar(task, showNotice = true) {
   const btn = document.querySelector(`.btn-sync-gcal[data-task-id="${task.id}"]`);
   if (btn) btn.textContent = '同步中...';
 
-  // Google Tasks 的 due 欄位必須是 RFC 3339 格式 (YYYY-MM-DDT00:00:00Z)
-  const cleanDate = task.dueDate.includes('T') ? task.dueDate.split('T')[0] : task.dueDate;
-  const taskPayload = {
-    title: task.title,
-    notes: `由個人行政秘書系統(PASS)建立。\n重要度：${task.importance === 'important' ? '⭐ 重要' : '☕ 不重要'}\n截止日：${cleanDate}`,
-    due: `${cleanDate}T00:00:00Z`
-  };
+  const cleanDueDate = task.dueDate.includes('T') ? task.dueDate.split('T')[0] : task.dueDate;
+  const isReminderEvent = Boolean(task.reminderTime);
 
   try {
-    const res = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${state.gcalToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(taskPayload)
-    });
+    if (isReminderEvent) {
+      // === 模式 A：有設定提醒時間 -> 建立 Google Calendar 活動 (Event) 並附帶彈窗提醒 ===
+      const [h, m] = task.reminderTime.split(':').map(Number);
+      let endH = h;
+      let endM = m + 30;
+      if (endM >= 60) {
+        endH = (endH + 1) % 24;
+        endM = endM - 60;
+      }
 
-    if (res.status === 401) {
-      if (showNotice) alert('Google 授權已過期，請重新連線。');
-      disconnectGoogleCalendar();
-      return;
+      const tzOffset = -new Date().getTimezoneOffset();
+      const diffSign = tzOffset >= 0 ? '+' : '-';
+      const padZero = (n) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+      const offsetString = `${diffSign}${padZero(tzOffset / 60)}:${padZero(tzOffset % 60)}`;
+
+      const startISO = `${cleanDueDate}T${padZero(h)}:${padZero(m)}:00${offsetString}`;
+      const endISO = `${cleanDueDate}T${padZero(endH)}:${padZero(endM)}:00${offsetString}`;
+
+      const eventPayload = {
+        summary: task.title,
+        description: `由個人行政秘書系統(PASS)建立。\n重要度：${task.importance === 'important' ? '⭐ 重要' : '☕ 不重要'}\n截止日：${cleanDueDate}\n提醒時間：${task.reminderTime}`,
+        start: { dateTime: startISO },
+        end: { dateTime: endISO },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: 0 } // 在使用者設定的提醒時間準時跳出提醒
+          ]
+        }
+      };
+
+      const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.gcalToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(eventPayload)
+      });
+
+      if (res.status === 401) {
+        if (showNotice) alert('Google 授權已過期，請重新連線。');
+        disconnectGoogleCalendar();
+        return;
+      }
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `HTTP ${res.status}`);
+      }
+
+      const createdEvent = await res.json();
+      if (createdEvent && createdEvent.id) {
+        task.gcalEventId = createdEvent.id;
+        task.syncType = 'event';
+        persistState();
+        renderDayEvents(state.selectedDateStr);
+      }
+      if (showNotice) {
+        alert(`成功同步至 Google 活動 (Event)：「${task.title}」（已設 ${task.reminderTime} 提醒）！`);
+      }
+    } else {
+      // === 模式 B：無提醒時間 -> 建立 Google 工作 (Task) ===
+      const taskPayload = {
+        title: task.title,
+        notes: `由個人行政秘書系統(PASS)建立。\n重要度：${task.importance === 'important' ? '⭐ 重要' : '☕ 不重要'}\n截止日：${cleanDueDate}`,
+        due: `${cleanDueDate}T00:00:00Z`
+      };
+
+      const res = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.gcalToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(taskPayload)
+      });
+
+      if (res.status === 401) {
+        if (showNotice) alert('Google 授權已過期，請重新連線。');
+        disconnectGoogleCalendar();
+        return;
+      }
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `HTTP ${res.status}`);
+      }
+
+      const createdTask = await res.json();
+      if (createdTask && createdTask.id) {
+        task.gcalEventId = createdTask.id;
+        task.syncType = 'task';
+        persistState();
+        renderDayEvents(state.selectedDateStr);
+      }
+      if (showNotice) {
+        alert(`成功同步至 Google 工作 (Tasks)：「${task.title}」！`);
+      }
     }
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `HTTP ${res.status}`);
-    }
-
-    const createdTask = await res.json();
-    if (createdTask && createdTask.id) {
-      task.gcalEventId = createdTask.id;
-      task.syncType = 'task';
-      persistState();
-      renderDayEvents(state.selectedDateStr);
-    }
-    if (showNotice) {
-      alert(`成功同步至 Google 工作 (Tasks)：「${task.title}」！`);
-    }
-    // 重新抓取行程並更新顯示
+    // 重新抓取並更新月曆畫面
     fetchGoogleCalendarEvents();
   } catch (err) {
-    console.error('建立 Google Task 失敗:', err);
+    console.error('建立 Google 行程/工作失敗:', err);
     if (showNotice) {
-      alert(`同步至 Google 工作失敗：${err.message}`);
+      alert(`同步至 Google 失敗：${err.message}`);
     }
     if (btn) btn.textContent = '+Google';
   }

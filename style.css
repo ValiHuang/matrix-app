@@ -151,9 +151,20 @@ body {
 
 .input-form-grid {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1.1fr 1.5fr auto;
-  gap: 12px;
+  grid-template-columns: 2fr 1.1fr 1fr 1fr 1.3fr auto;
+  gap: 10px;
   align-items: flex-end;
+}
+
+.input-reminder input[type="time"] {
+  height: 38px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 0.88rem;
+  box-sizing: border-box;
 }
 
 .form-item {
@@ -417,6 +428,22 @@ body {
 
 .task-due.is-urgent {
   color: var(--color-urgent-important);
+  font-weight: 600;
+}
+
+.task-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.task-reminder-badge {
+  font-size: 0.72rem;
+  color: #7c3aed;
+  background-color: #ede9fe;
+  padding: 1px 6px;
+  border-radius: 4px;
   font-weight: 600;
 }
 
