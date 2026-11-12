@@ -242,13 +242,7 @@ const dayEventsListEl = document.getElementById('day-events-list');
 const gcalStatusDot = document.getElementById('gcal-status-dot');
 const gcalStatusText = document.getElementById('gcal-status-text');
 const btnGcalAuth = document.getElementById('btn-gcal-auth');
-const btnGcalSettings = document.getElementById('btn-gcal-settings');
 const btnRefreshGcal = document.getElementById('btn-refresh-gcal');
-const modalGcalSettings = document.getElementById('modal-gcal-settings');
-const inputGcalClientId = document.getElementById('input-gcal-client-id');
-const btnSaveGcalSettings = document.getElementById('btn-save-gcal-settings');
-const btnCancelGcalSettings = document.getElementById('btn-cancel-gcal-settings');
-const btnCloseGcalModal = document.getElementById('btn-close-gcal-modal');
 
 // 便利貼元素
 const noteForm = document.getElementById('note-form');
@@ -1285,26 +1279,6 @@ function initGoogleCalendar() {
   }
 
   // 綁定事件
-  btnGcalSettings.addEventListener('click', () => {
-    inputGcalClientId.value = state.gcalClientId || '';
-    modalGcalSettings.style.display = 'flex';
-  });
-
-  const closeModal = () => {
-    modalGcalSettings.style.display = 'none';
-  };
-  btnCloseGcalModal.addEventListener('click', closeModal);
-  btnCancelGcalSettings.addEventListener('click', closeModal);
-
-  btnSaveGcalSettings.addEventListener('click', () => {
-    const newId = inputGcalClientId.value.trim();
-    state.gcalClientId = newId;
-    localStorage.setItem('matrix_gcal_client_id', newId);
-    closeModal();
-    updateGcalUI();
-    alert(newId ? 'Google Client ID 已儲存！請點擊「連線」開始授權。' : '已清除 Google Client ID。');
-  });
-
   btnGcalAuth.addEventListener('click', () => {
     if (state.gcalToken) {
       // 登出/中斷連線
