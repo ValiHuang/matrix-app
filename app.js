@@ -1005,13 +1005,13 @@ function renderDayEvents(dateStr) {
     const urgent = isUrgent(t.dueDate, state.urgentDaysThreshold);
     const qKey = resolveQuadrant(t.importance, urgent);
 
-    // 比對此待辦是否已在 Google 日曆存在（以名稱比對）
-    const matchedGcal = dayGcalEvents.find(evt => {
+    // 比對此待辦是否已在 Google 日曆存在（以 gcalEventId 或名稱比對）
+    const matchedGcal = t.gcalEventId || dayGcalEvents.find(evt => {
       const summary = (evt.summary || '').trim();
       return summary === t.title.trim();
     });
 
-    if (matchedGcal) {
+    if (matchedGcal && typeof matchedGcal === 'object' && matchedGcal.id) {
       matchedGcalEventIds.add(matchedGcal.id);
     }
 
@@ -1024,9 +1024,9 @@ function renderDayEvents(dateStr) {
       </div>
       <div class="event-actions">
         ${matchedGcal 
-          ? `<span class="badge-synced" title="已同步至 Google 日曆">✓ 已同步</span>
-             ${matchedGcal.htmlLink ? `<a href="${matchedGcal.htmlLink}" target="_blank" rel="noopener" class="btn-icon-subtle" title="在 Google 日曆開啟">🔗</a>` : ''}`
-          : `<button class="btn-sync-gcal" title="同步新增至 Google 日曆" data-task-id="${t.id}">+Google</button>`
+          ? `<span class="badge-synced" title="已同步至 Google">✓ 已同步</span>
+             ${(matchedGcal.htmlLink) ? `<a href="${matchedGcal.htmlLink}" target="_blank" rel="noopener" class="btn-icon-subtle" title="在 Google 日曆開啟">🔗</a>` : ''}`
+          : `<button class="btn-sync-gcal" title="同步新增至 Google 工作" data-task-id="${t.id}">+Google</button>`
         }
       </div>
     `;
@@ -1382,6 +1382,7 @@ async function syncTaskToGoogleCalendar(task, showNotice = true) {
       task.gcalEventId = createdTask.id;
       task.syncType = 'task';
       persistState();
+      renderDayEvents(state.selectedDateStr);
     }
     if (showNotice) {
       alert(`成功同步至 Google 工作 (Tasks)：「${task.title}」！`);
