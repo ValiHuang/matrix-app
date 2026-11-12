@@ -477,11 +477,24 @@ function renderMatrix() {
     document.getElementById(`list-${q}`).innerHTML = '';
   });
 
-  // 根據完成日期自動排序：越早到期的排在越前面 (升冪排序)
+  // 自動多階排序：
+  // 1. 先依「完成日期」由早到晚 (升冪排序)
+  // 2. 若同日期：有設定「提醒時間」的活動排在前面，並依時間早晚 (如 10:00 早於 16:30) 升冪排序
+  // 3. 若同日期且未設定提醒時間 (全天工作)：排在後面，依建立時間順序排列
   const sortedTasks = [...state.tasks].sort((a, b) => {
     if (!a.dueDate) return 1;
     if (!b.dueDate) return -1;
-    return a.dueDate.localeCompare(b.dueDate);
+    const dateComp = a.dueDate.localeCompare(b.dueDate);
+    if (dateComp !== 0) return dateComp;
+
+    // 同一天，比對提醒時間
+    if (a.reminderTime && b.reminderTime) {
+      return a.reminderTime.localeCompare(b.reminderTime);
+    }
+    if (a.reminderTime && !b.reminderTime) return -1; // a 有時間排前面
+    if (!a.reminderTime && b.reminderTime) return 1;  // b 有時間排前面
+
+    return (a.id || '').localeCompare(b.id || '');
   });
 
   sortedTasks.forEach(task => {
@@ -1218,7 +1231,13 @@ function getQuadrantColor(qKey) {
 
 function renderDayEvents(dateStr) {
   dayEventsListEl.innerHTML = '';
-  const dayTasks = state.tasks.filter(t => t.dueDate === dateStr);
+  // 當日事項依時間排序：有提醒時間依時間升冪排序，無提醒時間 (全天) 排在後面
+  const dayTasks = state.tasks.filter(t => t.dueDate === dateStr).sort((a, b) => {
+    if (a.reminderTime && b.reminderTime) return a.reminderTime.localeCompare(b.reminderTime);
+    if (a.reminderTime && !b.reminderTime) return -1;
+    if (!a.reminderTime && b.reminderTime) return 1;
+    return (a.id || '').localeCompare(b.id || '');
+  });
   const dayGcalEvents = state.gcalEvents.filter(evt => {
     const evtDate = evt.start?.date || (evt.start?.dateTime ? evt.start.dateTime.split('T')[0] : '');
     return evtDate === dateStr;
