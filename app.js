@@ -1240,8 +1240,6 @@ function escapeHtml(str) {
 let gcalTokenClient = null;
 
 function initGoogleCalendar() {
-  inputGcalClientId.value = state.gcalClientId || '';
-
   // 檢查既有的 Token 是否過期
   if (state.gcalToken && state.gcalTokenExpiry) {
     if (Date.now() > state.gcalTokenExpiry) {
@@ -1319,8 +1317,7 @@ function updateGcalUI() {
 function loginGoogleCalendar(silent = false) {
   if (!state.gcalClientId) {
     if (!silent) {
-      alert('請先點擊「⚙️ 設定」輸入您的 Google OAuth Client ID！');
-      modalGcalSettings.style.display = 'flex';
+      alert('系統尚未設定 Google OAuth Client ID！');
     }
     return;
   }
