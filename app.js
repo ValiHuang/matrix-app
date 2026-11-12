@@ -478,15 +478,20 @@ btnBatchComplete.addEventListener('click', async () => {
 // === 2. 上方使用者輸入與緊急天數偵測 ===
 const checkAutoSyncGcal = document.getElementById('check-auto-sync-gcal');
 
-newTaskForm.addEventListener('submit', async (e) => {
+newTaskForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const title = inputTaskTitle.value.trim();
-  const dueDate = inputTaskDate.value;
-  const reminderTime = inputTaskTime ? inputTaskTime.value : '';
+  
+  const title = (inputTaskTitle.value || '').trim();
+  const dueDate = (inputTaskDate.value || '').trim();
+  const reminderTime = inputTaskTime ? inputTaskTime.value.trim() : '';
   const importance = inputTaskImportance.value;
 
-  if (!title || !dueDate) return;
+  if (!title || !dueDate) {
+    alert('請輸入事物說明與完成日期！');
+    return;
+  }
 
+  // 1. 本地資料優先建立（毫秒級完成）
   const newTask = {
     id: Date.now().toString(),
     title,
@@ -498,13 +503,18 @@ newTaskForm.addEventListener('submit', async (e) => {
   state.tasks.push(newTask);
   inputTaskTitle.value = '';
   if (inputTaskTime) inputTaskTime.value = '';
+
   persistState();
   renderMatrix();
   renderCalendar();
 
-  // 若使用者勾選了同步 Google 日曆且目前有連線 Token，自動發布至 Google Calendar
+  // 2. Google 日曆同步放背景執行，絕不阻塞四象限操作
   if (checkAutoSyncGcal && checkAutoSyncGcal.checked && state.gcalToken) {
-    await syncTaskToGoogleCalendar(newTask, false); // false 代表靜默模式，不跳 alert 打擾使用者
+    setTimeout(() => {
+      syncTaskToGoogleCalendar(newTask, false).catch(err => {
+        console.warn('背景同步 Google 失敗:', err);
+      });
+    }, 50);
   }
 });
 
@@ -1297,8 +1307,8 @@ function loginGoogleCalendar(isUserInitiated = true) {
       }
     });
 
-    // 授權請求
-    gcalTokenClient.requestAccessToken({ prompt: isUserInitiated ? '' : 'none' });
+    // 授權請求：prompt: '' 允許在使用者登入態下自動靜默發放 Token
+    gcalTokenClient.requestAccessToken({ prompt: '' });
   } catch (err) {
     console.error('初始化 Google 授權失敗:', err);
     if (isUserInitiated) {
@@ -1374,10 +1384,11 @@ async function smartSyncMonthToGoogleCalendar() {
     // 1. 先抓取最新行程
     await fetchGoogleCalendarEvents();
 
-    // 2. 篩選當月且尚未登記到 Google 日曆的 PASS 待辦事項
+    // 2. 篩選當月且尚未登記到 Google (無 gcalEventId 且無 gcalTaskId) 的 PASS 待辦事項
     const currentMonthPrefix = `${state.calYear}-${String(state.calMonth + 1).padStart(2, '0')}`;
     const unpostedTasks = state.tasks.filter(t => {
-      return t.dueDate && t.dueDate.startsWith(currentMonthPrefix) && !t.gcalEventId;
+      const cleanDueDate = (t.dueDate || '').replace(/\//g, '-');
+      return cleanDueDate.startsWith(currentMonthPrefix) && !t.gcalEventId && !t.gcalTaskId;
     });
 
     let newlySyncedCount = 0;
@@ -1422,7 +1433,14 @@ async function syncTaskToGoogleCalendar(task, showNotice = true) {
   try {
     if (!isReminderEvent) {
       // === 模式 A：無提醒時間 -> Google Tasks (工作) ===
-      const taskDueISO = new Date(`${task.dueDate}T00:00:00Z`).toISOString();
+      let taskDueISO;
+      try {
+        const cleanDate = (task.dueDate || '').replace(/\//g, '-');
+        taskDueISO = new Date(`${cleanDate}T00:00:00.000Z`).toISOString();
+      } catch (err) {
+        taskDueISO = new Date().toISOString();
+      }
+
       const taskPayload = {
         title: task.title,
         notes: `由個人行政秘書系統(PASS)建立。\n重要度：${task.importance === 'important' ? '⭐ 重要' : '☕ 不重要'}`,
