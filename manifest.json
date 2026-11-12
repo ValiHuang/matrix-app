@@ -1,7 +1,7 @@
 {
-  "name": "事務管理",
-  "short_name": "事務管理",
-  "description": "基於輕重緩急艾森豪矩陣的高效事務管理、購物清單、便利貼、記帳與月曆工具",
+  "name": "個人行政秘書系統(PASS)",
+  "short_name": "PASS",
+  "description": "個人行政秘書系統(PASS)：基於輕重緩急艾森豪矩陣的高效事務管理、購物清單、便利貼、記帳與月曆工具",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
