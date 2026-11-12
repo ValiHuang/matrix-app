@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>個人行政秘書系統(PASS) | Eisenhower Matrix</title>
+  <title>PASS (Personal Administrative Secretary System) | 個人行政秘書系統</title>
   <link rel="manifest" href="manifest.json?v=2">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=2">
@@ -11,7 +11,7 @@
   <meta name="theme-color" content="#4f46e5">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="事務管理">
+  <meta name="apple-mobile-web-app-title" content="PASS">
   <link rel="stylesheet" href="style.css?v=20261111_0825">
 </head>
 <body>
@@ -19,7 +19,7 @@
   <header class="app-header">
     <div class="logo-area">
       <span class="logo-icon">🧭</span>
-      <h1>個人行政秘書系統(PASS)</h1>
+      <h1>PASS | 個人行政秘書系統</h1>
       <!-- 雲端同步狀態與金鑰按鈕 -->
       <button id="btn-sync-key" class="btn btn-secondary sync-status-btn" title="設定專屬同步金鑰以跨裝置連線">
         <span class="sync-dot" id="sync-status-dot"></span>
@@ -43,7 +43,7 @@
       <section class="task-input-panel">
         <form id="new-task-form" class="input-form-grid">
           <div class="form-item input-desc">
-            <label for="input-task-title">1. 事物說明 *</label>
+            <label for="input-task-title">1. 事務說明 *</label>
             <input type="text" id="input-task-title" placeholder="輸入待辦內容..." required>
           </div>
 
@@ -104,7 +104,7 @@
           <div class="form-item input-urgent-setting">
             <label for="setting-urgent-days">
               5. 緊急天數設定
-              <span class="tooltip-icon" title="當前日期至完成日期小於等於此天數即判定為緊急">ℹ️</span>
+              <span class="tooltip-icon" id="tooltip-urgent-days" style="cursor:pointer;" title="點擊查看緊急天數判定說明">ℹ️</span>
             </label>
             <div class="urgent-input-wrapper">
               <span>未來</span>

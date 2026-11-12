@@ -593,6 +593,15 @@ function initReminderTimePicker() {
 }
 initReminderTimePicker();
 
+// 緊急天數說明按鈕 (點擊跳出說明彈窗)
+const tooltipUrgentDays = document.getElementById('tooltip-urgent-days');
+if (tooltipUrgentDays) {
+  tooltipUrgentDays.addEventListener('click', (e) => {
+    e.preventDefault();
+    alert('【緊急天數判定說明】\n\n系統會自動偵測您所設定的完成日期，並調整其為是否為緊急項目。\n\n以 1 月 1 日為例，若是設定 3 天是緊急天數，則 1/4 (含) 在內的項目都會移至緊急項目。');
+  });
+}
+
 // 緊急天數設定改變即時重算四象限
 urgentDaysInput.addEventListener('input', (e) => {
   const val = parseInt(e.target.value, 10);
