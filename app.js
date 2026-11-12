@@ -1142,6 +1142,25 @@ function initGoogleCalendar() {
     }
   }
 
+  // 自動重連：若使用者曾成功連線過（matrix_gcal_auto_connect）但目前未持有有效 Token，嘗試背景靜默重連
+  const shouldAutoConnect = localStorage.getItem('matrix_gcal_auto_connect') === 'true';
+  if (!state.gcalToken && state.gcalClientId && shouldAutoConnect) {
+    // 延遲一點點等待 Google Identity scripts 載入完成
+    setTimeout(() => {
+      loginGoogleCalendar(true);
+    }, 800);
+  }
+
+  // 監聽網路恢復連線事件 (Online)：斷線後重連時自動續期並更新日曆
+  window.addEventListener('online', () => {
+    console.log('網路已恢復連線，嘗試重新連線 Google 日曆...');
+    if (state.gcalClientId && localStorage.getItem('matrix_gcal_auto_connect') === 'true') {
+      loginGoogleCalendar(true);
+    } else if (state.gcalToken) {
+      fetchGoogleCalendarEvents();
+    }
+  });
+
   updateGcalUI();
 
   // 若 Token 依然有效，頁面載入時自動拉取當月行程
@@ -1207,15 +1226,19 @@ function updateGcalUI() {
   }
 }
 
-function loginGoogleCalendar() {
+function loginGoogleCalendar(silent = false) {
   if (!state.gcalClientId) {
-    alert('請先點擊「⚙️ 設定」輸入您的 Google OAuth Client ID！');
-    modalGcalSettings.style.display = 'flex';
+    if (!silent) {
+      alert('請先點擊「⚙️ 設定」輸入您的 Google OAuth Client ID！');
+      modalGcalSettings.style.display = 'flex';
+    }
     return;
   }
 
   if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-    alert('Google Identity 服務尚未載入完成，請確認網路連線或重新整理頁面。');
+    if (!silent) {
+      alert('Google Identity 服務尚未載入完成，請確認網路連線或重新整理頁面。');
+    }
     return;
   }
 
@@ -1226,7 +1249,9 @@ function loginGoogleCalendar() {
       callback: (tokenResponse) => {
         if (tokenResponse.error) {
           console.error('Google 授權失敗:', tokenResponse);
-          alert(`授權失敗：${tokenResponse.error_description || tokenResponse.error}`);
+          if (!silent) {
+            alert(`授權失敗：${tokenResponse.error_description || tokenResponse.error}`);
+          }
           return;
         }
         state.gcalToken = tokenResponse.access_token;
@@ -1234,6 +1259,7 @@ function loginGoogleCalendar() {
         state.gcalTokenExpiry = Date.now() + expiresInSec * 1000;
         localStorage.setItem('matrix_gcal_token', state.gcalToken);
         localStorage.setItem('matrix_gcal_token_expiry', state.gcalTokenExpiry.toString());
+        localStorage.setItem('matrix_gcal_auto_connect', 'true');
         updateGcalUI();
         fetchGoogleCalendarEvents();
       }
@@ -1242,7 +1268,9 @@ function loginGoogleCalendar() {
     gcalTokenClient.requestAccessToken({ prompt: '' }); // 使用者已同意過則免重複點擊確認
   } catch (err) {
     console.error('初始化 Google 授權失敗:', err);
-    alert(`初始化失敗：${err.message || err}`);
+    if (!silent) {
+      alert(`初始化失敗：${err.message || err}`);
+    }
   }
 }
 
@@ -1256,6 +1284,7 @@ function disconnectGoogleCalendar() {
   state.gcalTokenExpiry = 0;
   localStorage.removeItem('matrix_gcal_token');
   localStorage.removeItem('matrix_gcal_token_expiry');
+  localStorage.removeItem('matrix_gcal_auto_connect');
   state.gcalEvents = [];
   updateGcalUI();
   renderCalendar();
