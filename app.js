@@ -528,8 +528,8 @@ shoppingForm.addEventListener('submit', (e) => {
 
 function renderShoppingList() {
   shoppingListEl.innerHTML = '';
-  const remainingCount = state.shoppingList.filter(item => !item.done).length;
-  shoppingCountEl.textContent = remainingCount;
+  const checkedCount = state.shoppingList.filter(item => item.done).length;
+  shoppingCountEl.textContent = checkedCount;
 
   state.shoppingList.forEach(item => {
     const li = document.createElement('li');
@@ -629,7 +629,7 @@ function renderNotes() {
 // === 5. 快速記帳模組 ===
 // 動態產生類別選單
 function updateAccountingCategoryOptions(type) {
-  accCategorySelect.innerHTML = '<option value="">(未選擇類別)</option>';
+  accCategorySelect.innerHTML = '<option value="">其他</option>';
   const categories = ACCOUNTING_CATEGORIES[type] || [];
 
   categories.forEach(groupObj => {
