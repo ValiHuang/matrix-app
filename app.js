@@ -355,14 +355,31 @@ function updateKeyValidationUI(key) {
   }
 }
 
-// 隨機產生高強度安全金鑰 (格式：PASS-xxx#xxx)
+// 隨機產生高強度安全金鑰 (保證至少包含英文大寫、小寫、數字與符號)
 function generateSecureRandomKey() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
-  let rand = '';
-  for (let i = 0; i < 10; i++) {
-    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%^&*';
+  const allChars = upper + lower + digits + symbols;
+
+  // 確保四種字元至少各挑選 1 個
+  let result = [
+    upper.charAt(Math.floor(Math.random() * upper.length)),
+    lower.charAt(Math.floor(Math.random() * lower.length)),
+    digits.charAt(Math.floor(Math.random() * digits.length)),
+    symbols.charAt(Math.floor(Math.random() * symbols.length))
+  ];
+
+  // 隨機補滿至 10 個字元
+  for (let i = 4; i < 10; i++) {
+    result.push(allChars.charAt(Math.floor(Math.random() * allChars.length)));
   }
-  return `Pass-${rand}`;
+
+  // 洗牌打亂順序
+  result.sort(() => Math.random() - 0.5);
+
+  return `Pass-${result.join('')}`;
 }
 
 // 開啟金鑰設定彈窗

@@ -354,32 +354,54 @@
   <div id="modal-instructions" class="modal-overlay" style="display:none;">
     <div class="modal-dialog modal-instructions-dialog">
       <div class="modal-header">
-        <h3>📖 個人行政秘書系統(PASS) 使用須知</h3>
+        <h3>📖 PASS | 個人行政秘書系統 使用須知</h3>
         <button id="btn-close-instructions-x" class="btn-close">&times;</button>
       </div>
       <div class="modal-body instructions-content">
         <div class="instruction-banner">
           ⚠️ <strong>提醒：您尚未設定專屬同步金鑰！</strong><br>
-          目前系統僅以<strong>單機離線模式</strong>運作，若清除瀏覽器快取資料可能遺失。
+          目前系統僅以<strong>單機離線模式</strong>運作，若更換裝置或清除瀏覽器快取，資料將無法保存。強烈建議立即設定專屬金鑰以啟用多端雲端備份！
         </div>
 
         <section class="instruction-section">
-          <h4>🔐 1. 重要：請設定高強度專屬同步金鑰</h4>
-          <p>
-            本系統具備 Firebase 雲端即時同步功能。任何輸入<strong>相同金鑰</strong>的裝置（電腦、手機、平板）都能同步編輯您的四象限排程、購物清單、記帳與便貼。
-          </p>
+          <h4>🔐 1. 專屬安全同步金鑰（跨裝置即時連線）</h4>
           <ul>
-            <li><strong>設定高強度密碼</strong>：請勿使用簡單常見的字詞（如 <code>123456</code>、<code>admin</code>、<code>test</code> 等），強烈建議使用「英文大小寫 + 數字 + 特殊符號」組合，避免他人意外猜到而能查看或修改您的事物排程。</li>
-            <li><strong>跨裝置隨身同步</strong>：在手機或新電腦開啟本系統時，只需在上方「未連線金鑰」輸入同一組密碼，即可無縫載入所有資料。</li>
+            <li><strong>免註冊帳號、極致隱私</strong>：本系統不收集個人帳號或電子郵件，僅以您自訂的<strong>專屬同步金鑰</strong>進行資料加密與即時傳輸。</li>
+            <li><strong>高強度安全防護</strong>：為杜絕他人隨機猜測，金鑰<strong>長度需達 8 碼以上，且必須包含英文字母與數字</strong>（允許特殊符號，不能含有空格或中文）。亦可點擊「🎲 隨機產生」一秒取得安全金鑰。</li>
+            <li><strong>跨平台即時同步</strong>：在您的其他裝置（iPhone、iPad、Android 手機、筆電或公司電腦）打開本系統並輸入<strong>相同金鑰</strong>，所有待辦、購物清單、便簽與記帳紀錄將全自動即時同步！</li>
           </ul>
         </section>
 
         <section class="instruction-section">
-          <h4>💡 2. 使用安全與操作提醒</h4>
+          <h4>🧭 2. 核心功能：輕重緩急四象限排程</h4>
           <ul>
-            <li><strong>自建金鑰毋須註冊</strong>：直接點擊上方金鑰按鈕輸入即可生效，不用填寫個人帳號信箱，隱私安全無負擔。</li>
-            <li><strong>Google 日曆連動</strong>：月曆側邊欄已支援 Google 日曆雙向串接。登入屬於您個人的 Google 帳號授權，其他人絕無權限存取您的日曆。</li>
-            <li><strong>離線防護 PWA</strong>：本系統支援手機安裝（新增至主畫面），在無網路環境下仍能正常記錄，待連網時自動同步。</li>
+            <li><strong>到期日自動排序</strong>：所有任務會自動依據截止日期升冪排列，越急迫、越接近到期的事項自動置頂。</li>
+            <li><strong>動態緊急判定</strong>：透過「緊急天數設定」（預設未來 3 天內），系統每日會自動偵測並將即將到期的任務動態移入「緊急」象限，提醒您優先處理。</li>
+            <li><strong>批次完成與還原</strong>：勾選任務後點擊「✓ 勾選項目已完成」可一次歸檔；若誤按，隨時可在側邊欄「已完成」清單中點擊「↺ 還原所選事項」。</li>
+          </ul>
+        </section>
+
+        <section class="instruction-section">
+          <h4>🗓️ 3. Google 日曆與工作（Tasks）智慧雙軌同步</h4>
+          <ul>
+            <li><strong>智慧雙軌同步</strong>：
+              <ul>
+                <li><strong>有設定「提醒時間」</strong>：自動在 Google 日曆建立「<strong>活動 (Event)</strong>」，並在您指定的時間由 Google 發出準時彈窗推播提醒。</li>
+                <li><strong>未設定「提醒時間」</strong>：自動在 Google 日曆頂端建立「<strong>工作 (Task)</strong>」，方便整日排程檢視。</li>
+              </ul>
+            </li>
+            <li><strong>雙向自動連動</strong>：在 PASS 點擊「已完成」時，Google 日曆/工作清單將<strong>同步劃掉或移除</strong>；從已完成歷史中「還原」時，會自動補登回 Google 日曆。</li>
+            <li><strong>當月日曆智慧補登（🔄 增量同步）</strong>：點擊當月標題旁的「🔄」按鈕，系統會自動檢查並<strong>僅補登當月尚未同步的事項</strong>，絕不重複建立，且<strong>絕不更動您在 Google 日曆原本編輯的獨立私人行程</strong>。</li>
+          </ul>
+        </section>
+
+        <section class="instruction-section">
+          <h4>🛠️ 4. 實用輔助功能</h4>
+          <ul>
+            <li><strong>🛒 購物清單</strong>：支援項目勾選，按鈕旁會即時統計打勾數量，點擊「清除已完成」輕鬆清單歸零。</li>
+            <li><strong>📝 便利貼</strong>：隨手筆記草稿區，支援點擊「轉為待辦」一鍵將靈感直接轉換為四象限任務。</li>
+            <li><strong>💰 快速記帳</strong>：提供收入與支出快速登錄、多層級自訂分類與月份彙整，明細自動依日期由新至舊排序。</li>
+            <li><strong>📲 PWA 跨平台安裝</strong>：支援手機與平板點擊「新增至主畫面（Add to Home Screen）」，享受如原生 App 般的流暢全螢幕操作體驗。</li>
           </ul>
         </section>
       </div>
